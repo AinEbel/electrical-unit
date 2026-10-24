@@ -1,0 +1,843 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0F1A17">
+<title>Electrical Unit</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+// Electrical Unit — settings.
+window.EU_CONFIG = {
+  // Supervisor email. Only this account can manage the team and attendance.
+  ownerEmail: "farah12@un.org",
+
+  // Firebase project "electrical-unit".
+  firebase: {
+    apiKey: "AIzaSyAm1fxMbp_KX73XVpkNsVM0Z6L5ypd3vdA",
+    authDomain: "electrical-unit.firebaseapp.com",
+    projectId: "electrical-unit",
+    storageBucket: "electrical-unit.firebasestorage.app",
+    messagingSenderId: "969724931612",
+    appId: "1:969724931612:web:b932e12d63898644c079d9"
+  }
+};
+</script>
+<style>
+:root{
+  --bg:#0F1A17; --surface:#16241F; --sunk:#1D2E28; --ink:#F4F2EC; --muted:#A9B6B0; --line:#26352F;
+  --accent:#E8A33D; --accent-ink:#0F1A17; --accent-soft:#3A2E14;
+  --urgent:#EF6B5A; --urgent-soft:#3A1B17; --ok:#7FD1B9; --ok-soft:#163029; --info:#8CC3EE; --info-soft:#15283A;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-label:"Archivo",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 var(--f-body);padding-bottom:env(safe-area-inset-bottom,0px)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.wrap{max-width:900px;margin:0 auto;padding-inline:16px}
+main.wrap.wide{max-width:none;padding-inline:20px}
+.wide table.att{width:100%;font-size:14px}
+.wide table.att th,.wide table.att td{height:40px;min-width:30px}
+.wide table.att .nm{min-width:180px;max-width:240px;font-size:15px}
+.wide .cell{height:40px;font-size:14px}
+[hidden]{display:none!important}
+
+header{position:sticky;top:0;z-index:20;background:var(--bg);border-bottom:1px solid var(--line);padding-top:env(safe-area-inset-top,0px)}
+.brand{display:flex;align-items:center;gap:10px;padding-block:12px 8px}
+.bolt{width:34px;height:34px;border-radius:9px;background:var(--accent);display:grid;place-items:center;flex:none}
+.bolt svg{width:18px;height:18px;fill:var(--accent-ink)}
+.brand h1{font:800 20px/1 var(--f-label);text-transform:uppercase;margin:0}
+.brand .sub{font:500 11px/1 var(--f-mono);letter-spacing:.22em;text-transform:uppercase;color:var(--accent);margin-top:4px}
+.brand .me{margin-left:auto;text-align:right;font-size:13px;color:var(--muted);min-width:0}
+.brand .me button{background:none;border:0;color:var(--muted);text-decoration:underline;cursor:pointer;padding:0;font-size:13px}
+.tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+.tab{border:0;background:none;padding:9px 12px 11px;font:700 14px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border-bottom:3px solid transparent;white-space:nowrap;cursor:pointer}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--accent)}
+
+main{padding-block:16px 80px}
+.stack{display:flex;flex-direction:column;gap:12px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.spacer{flex:1}
+h2{font:800 19px/1.1 var(--f-label);text-transform:uppercase;margin:4px 0 0}
+h3{font:700 13px/1.2 var(--f-label);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:6px 0 0}
+.muted{color:var(--muted)} .small{font-size:13px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;min-width:0}
+.card.hi{border-color:var(--accent)}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:8px 16px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:42px}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.danger{background:var(--urgent);border-color:var(--urgent);color:#fff}
+.btn.ghost{background:none;border-color:transparent;color:var(--muted)}
+.btn.sm{min-height:34px;padding:4px 12px;font-size:14px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.pill{display:inline-block;padding:2px 9px;border-radius:99px;font:700 11px/18px var(--f-label);letter-spacing:.08em;text-transform:uppercase}
+.p-done{background:var(--ok-soft);color:var(--ok)} .p-pend{background:var(--accent-soft);color:var(--accent)} .p-off{background:var(--sunk);color:var(--muted)}
+a.btn{color:inherit;text-decoration:none;display:inline-flex;align-items:center}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;overflow:hidden;background:var(--surface)}
+.seg button{border:0;background:none;padding:7px 14px;font-weight:600;font-size:14px;cursor:pointer;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.empty{border:1.5px dashed var(--line);border-radius:12px;padding:22px 16px;text-align:center;color:var(--muted)}
+.empty b{display:block;color:var(--ink);margin-bottom:4px}
+.inp,label.f input,label.f textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:16px}
+label.f{display:flex;flex-direction:column;gap:4px;font:700 12px/1.2 var(--f-label);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+textarea{resize:vertical;min-height:80px}
+.err{color:var(--urgent);font-size:14px}
+.ok{color:var(--ok);font-size:14px}
+
+.scrollx{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+table.att{border-collapse:separate;border-spacing:0;font-size:13px;font-variant-numeric:tabular-nums}
+table.att th,table.att td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:0;text-align:center;height:36px;min-width:32px}
+table.att th{font:700 11px/1.1 var(--f-label);color:var(--muted);background:var(--surface)}
+table.att .we{background:var(--sunk)}
+table.att th.today{color:var(--accent-ink);background:var(--accent)}
+table.att .nm{position:sticky;left:0;background:var(--surface);text-align:left;padding:0 10px;min-width:120px;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;z-index:1;font-size:14px}
+table.kwh{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}
+table.kwh th,table.kwh td{border-bottom:1px solid var(--line);padding:6px 8px;text-align:right;white-space:nowrap}
+table.kwh th{font:700 11px/1.2 var(--f-label);color:var(--muted);text-transform:uppercase;letter-spacing:.04em;background:var(--surface)}
+table.kwh td.s,table.kwh th.s{text-align:left;white-space:normal;min-width:140px}
+table.kwh input{width:110px;text-align:right;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);font:inherit;color:inherit}
+table.kwh input.done{border-color:var(--accent)}
+table.kwh .neg{color:#e5484d;font-weight:700}
+.kpi{display:flex;gap:10px;flex-wrap:wrap}.kpi .card{flex:1;min-width:130px}.kpi b{display:block;font:700 24px/1.1 var(--f-mono)}
+table.att td.tot{font-family:var(--f-mono);padding:0 6px;color:var(--muted)}
+.cell{width:100%;height:36px;border:0;background:none;font:600 13px/1 var(--f-mono);cursor:pointer}
+.cell:disabled{cursor:default}
+.attwrap{max-height:70vh;overflow:auto}
+table.att tr:first-child th{position:sticky;top:0;z-index:2;background:#22362F;color:var(--ink);height:40px;box-shadow:0 1px 0 var(--line)}
+table.att tr:first-child th.we{background:#2C4239}
+table.att tr:first-child th.today{background:var(--accent);color:var(--accent-ink)}
+table.att tr:first-child th.nm{z-index:3;background:#22362F}
+table.att tr:nth-child(odd) td{background:#1B2B25}
+table.att tr:nth-child(odd) td.nm{background:#1B2B25}
+table.att tr:not(:first-child):hover td,table.att tr:not(:first-child):hover td.nm{background:#2A4038}
+table.att td.nm{color:var(--ink);font-weight:600}
+table.att td.m-P,table.att td.m-A,table.att td.m-L,table.att td.m-S,table.att td.m-O{background-clip:padding-box}
+.m-P{background:#5FD3A8!important;color:#0B1F18} .m-A{background:#FF7563!important;color:#2A0904} .m-L{background:#7FC2F5!important;color:#08223A} .m-S{background:#F5B647!important;color:#2B1C00} .m-O{background:#C3CCC8!important;color:#1A2420}
+td.m-P .cell,td.m-A .cell,td.m-L .cell,td.m-S .cell,td.m-O .cell{color:inherit;font-weight:800}
+.legend b.m-P,.legend b.m-A,.legend b.m-L,.legend b.m-S,.legend b.m-O{display:inline-block;min-width:22px;text-align:center;border-radius:5px;padding:1px 4px}
+.legend{display:flex;gap:6px 14px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.legend b{font-family:var(--f-mono);margin-right:4px}
+.gate{max-width:420px;margin:32px auto}
+.p-new{background:var(--info-soft);color:var(--info)} .p-progress{background:var(--accent-soft);color:var(--accent)} .p-waiting{background:var(--sunk);color:var(--muted)} .p-high{background:var(--urgent-soft);color:var(--urgent)}
+.card.click{cursor:pointer;text-align:left;width:100%;display:block;font:inherit;color:inherit}
+.card.click:hover{border-color:var(--muted)}
+.card.hot{border-left:4px solid var(--urgent)}
+.otitle{font-weight:600;font-size:17px;margin-top:6px;overflow-wrap:anywhere}
+.meta{font-size:13px;color:var(--muted);display:flex;gap:4px 12px;flex-wrap:wrap;margin-top:4px}
+.log{display:flex;flex-direction:column;gap:8px;border-left:2px solid var(--line);padding-left:12px;margin-left:4px}
+.log div{font-size:14px;overflow-wrap:anywhere}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:560px){.grid2{grid-template-columns:1fr}}
+label.f select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:16px}
+#sheet{position:fixed;inset:0;z-index:50;display:flex;align-items:flex-end;justify-content:center;background:rgba(5,10,8,.75)}
+#sheet .panel{background:var(--surface);width:100%;max-width:640px;max-height:92%;overflow:auto;border-radius:16px 16px 0 0;padding:16px 16px calc(20px + env(safe-area-inset-bottom,0px))}
+@media (min-width:700px){#sheet{align-items:center}#sheet .panel{border-radius:16px}}
+.tab .dot{display:inline-block;min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--accent);color:var(--accent-ink);font:700 11px/18px var(--f-body);margin-left:4px;vertical-align:1px}
+.sos{width:100%;min-height:58px;border:0;border-radius:14px;background:var(--urgent);color:#fff;font:800 19px/1 var(--f-label);letter-spacing:.06em;text-transform:uppercase;cursor:pointer}
+.alertbar{width:100%;border:0;border-radius:12px;background:var(--urgent);color:#fff;padding:12px 14px;display:flex;gap:10px;align-items:center;text-align:left;cursor:pointer;margin-bottom:12px;font:inherit}
+.alertbar b{font:800 16px/1.2 var(--f-label);text-transform:uppercase;letter-spacing:.04em}
+.pulse{width:12px;height:12px;border-radius:50%;background:#fff;flex:none}
+@media (prefers-reduced-motion:no-preference){.pulse{animation:pulse 1.2s infinite}}
+@keyframes pulse{50%{opacity:.3}}
+.p-urgent{background:var(--urgent);color:#fff}
+.tab .dot.red{background:var(--urgent);color:#fff}
+.toast.u{background:var(--urgent);color:#fff}
+/* Convoy: weekly critical staff list (supervisor only) */
+.cvgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.cvcard{display:flex;flex-direction:column;gap:8px;opacity:.6}
+.cvcard.on{opacity:1;border-color:var(--ok)}
+.cvcard .pick{display:flex;align-items:center;gap:10px;cursor:pointer;min-width:0}
+.cvcard .pick input{width:24px;height:24px;flex:none;accent-color:var(--ok);cursor:pointer}
+.cvno{font:800 22px/1 var(--f-label);font-variant-numeric:tabular-nums;min-width:30px;color:var(--accent)}
+.cvcard .nmx{font-weight:600;overflow-wrap:anywhere;line-height:1.2}
+.cvthumb,.cvprev{aspect-ratio:85.6/54;background:var(--sunk);border-radius:8px;overflow:hidden;display:grid;place-items:center;color:var(--muted);font-size:13px}
+.cvthumb img,.cvprev img{width:100%;height:100%;object-fit:contain}
+.cvprev{max-width:340px;width:100%}
+.dirs{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.dirs button{border-radius:12px;flex-direction:column;align-items:flex-start;gap:2px;min-height:58px;text-align:left}
+.dirs button small{font-weight:400;font-size:12px;color:var(--muted)}
+.dirs button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.dirs button[aria-pressed="true"] small{color:var(--accent-ink)}
+@media (max-width:420px){.dirs{grid-template-columns:1fr}}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);border-radius:10px;padding:10px 16px;z-index:60;max-width:calc(100% - 32px)}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="brand">
+      <div class="bolt" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg></div>
+      <div><h1>Electrical Unit</h1><div class="sub">UNIFIL · Maintenance · v17</div></div>
+      <div class="me" id="me"></div>
+    </div>
+    <nav class="tabs" id="tabs" aria-label="Sections"></nav>
+  </div>
+</header>
+<div id="sheet" hidden><div class="panel" id="panel" role="dialog" aria-modal="true"></div></div>
+<main class="wrap" id="view"><div class="empty"><b>Loading</b>Connecting to the team database.</div></main>
+
+<script>
+/* ---------- setup ---------- */
+const CFG = window.EU_CONFIG || {};
+const OWNER = String(CFG.ownerEmail || '').toLowerCase();
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2, '0');
+const ym = d => d.getFullYear() + '-' + pad(d.getMonth() + 1);
+const shiftYm = (m, k) => { const [y, mo] = m.split('-').map(Number); return ym(new Date(y, mo - 1 + k, 1)); };
+const ymLabel = m => { const [y, mo] = m.split('-').map(Number); return new Date(y, mo - 1, 1).toLocaleDateString(undefined, {month:'long', year:'numeric'}); };
+const daysIn = m => { const [y, mo] = m.split('-').map(Number); return new Date(y, mo, 0).getDate(); };
+function ago(ms){ if(!ms) return ''; const s=(Date.now()-ms)/1000;
+  if(s<60) return 'just now'; if(s<3600) return Math.floor(s/60)+' min ago'; if(s<86400) return Math.floor(s/3600)+' h ago';
+  return new Date(ms).toLocaleDateString(undefined,{day:'numeric',month:'short'}); }
+function toast(msg, urgent){ const t=document.createElement('div'); t.className='toast'+(urgent?' u':''); t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),urgent?10000:4000); }
+function remember(k,v){ try{ if(v===undefined) return localStorage.getItem(k); localStorage.setItem(k,v); }catch(e){ return null; } }
+
+const TABS = [['orders','Daily jobs'],['support','Urgent support'],['attendance','Attendance'],['notes','Notes'],['kwh','kWh'],['convoy','Convoy'],['team','Team']];
+const OWNER_TABS = ['convoy','team'];
+const STATUS = {new:'New', progress:'In progress', waiting:'Waiting parts', done:'Done'};
+const MARKS = [['P','Present'],['A','Absent'],['L','Leave'],['S','Sick'],['O','Off']];
+
+const S = { user:null, email:'', owner:false, me:null, team:{}, attendance:{}, notes:[], loaded:false,
+  tab: remember('eu.tab') || 'orders', orders:[], support:[], orderFilter:'open', supportFilter:'pending', openSupportId:null, openOrder:null, month: ym(new Date()), noteFilter:'pending', sites:[], readings:{}, kMonth: ym(new Date()), kFind:'', authMode:'signin', authMsg:'',
+  cvStaff:[], cvLoaded:false, cvCards:{}, cv:{date:'', direction:''}, cvOnly:false, cvQuery:'', cvBusy:false };
+let cvCardsOn = false;
+
+if (!CFG.firebase || !CFG.firebase.apiKey) {
+  $('#view').innerHTML = `<div class="gate stack"><h2>Setup needed</h2><p class="muted">Open <b>config.js</b> and paste your Firebase settings and your own email, as the setup guide explains.</p></div>`;
+  throw new Error('config.js missing');
+}
+firebase.initializeApp(CFG.firebase);
+const auth = firebase.auth();
+const db = firebase.firestore();
+let unsubs = [];
+let dataOn = false;
+
+/* ---------- sign in ---------- */
+auth.onAuthStateChanged(u => {
+  unsubs.forEach(f => f()); unsubs = []; dataOn = false; cvCardsOn = false; S.cvStaff = []; S.cvCards = {}; S.cvLoaded = false;
+  S.user = u; S.email = u && u.email ? u.email.toLowerCase() : ''; S.owner = !!u && u.emailVerified && S.email === OWNER;
+  S.team = {}; S.attendance = {}; S.notes = []; S.loaded = false; S.me = null;
+  if (u && u.emailVerified) listen();
+  render();
+});
+
+function listen(){
+  const fail = e => { console.warn(e); if (e.code === 'permission-denied') { S.loaded = true; render(); } };
+  if (S.owner) {
+    unsubs.push(db.collection('team').onSnapshot(s => { S.team = {}; s.forEach(d => S.team[d.id] = d.data()); S.loaded = true; render(); }, fail));
+  } else {
+    unsubs.push(db.collection('team').doc(S.email).onSnapshot(d => {
+      S.me = d.exists ? d.data() : null; S.loaded = true;
+      if (S.me && S.me.active && !dataOn) listenTeamData();
+      if (!(S.me && S.me.active)) dataOn = false;
+      render();
+    }, fail));
+  }
+  if (S.owner) listenTeamData();
+  if (S.owner) {
+    unsubs.push(db.collection('convoyStaff').orderBy('no').onSnapshot(s => { S.cvStaff = s.docs.map(d => ({key:d.id, ...d.data()})); S.cvLoaded = true; render(); }, e => { console.warn(e); S.cvLoaded = true; S.cvDenied = e.code === 'permission-denied'; render(); }));
+    unsubs.push(db.collection('convoyInfo').doc('current').onSnapshot(d => { const x = d.exists ? d.data() : {}; S.cv = {date: x.date || '', direction: x.direction || ''}; render(); }, e => console.warn(e)));
+  }
+}
+// ID card pictures are large, so they load only once the Convoy tab is opened
+function cvBlobUrl(dataUrl){ const [head, b64] = dataUrl.split(','); const bin = atob(b64); const a = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
+  return URL.createObjectURL(new Blob([a], {type: (head.match(/data:([^;]+)/) || [])[1] || 'image/jpeg'})); }
+function cvListenCards(){ if (cvCardsOn || !S.owner) return; cvCardsOn = true;
+  unsubs.push(db.collection('convoyCards').onSnapshot(s => { s.docChanges().forEach(c => { const k = c.doc.id; if (S.cvCards[k]) URL.revokeObjectURL(S.cvCards[k]); delete S.cvCards[k];
+    const img = c.type !== 'removed' && c.doc.data().img; if (img) S.cvCards[k] = cvBlobUrl(img); }); render(); }, e => console.warn(e))); }
+function listenTeamData(){
+  dataOn = true;
+  const fail = e => console.warn(e);
+  if (!S.owner) unsubs.push(db.collection('team').onSnapshot(s => { S.team = {}; s.forEach(d => S.team[d.id] = d.data()); render(); }, fail));
+  unsubs.push(db.collection('attendance').onSnapshot(s => { S.attendance = {}; s.forEach(d => S.attendance[d.id] = d.data().marks || {}); render(); }, fail));
+  let firstOrders = true;
+  unsubs.push(db.collection('orders').orderBy('at','desc').limit(300).onSnapshot(s => {
+    if (!firstOrders) s.docChanges().forEach(c => { const o = c.doc.data();
+      if (c.type === 'added' && o.by !== S.email && !c.doc.metadata.hasPendingWrites) alertNew('New daily job', o.title + (o.location ? ' · ' + o.location : '')); });
+    firstOrders = false;
+    S.orders = s.docs.map(d => ({id:d.id, ...d.data()})); render(); refreshSheet(); }, fail));
+  let firstSupport = true;
+  unsubs.push(db.collection('support').orderBy('at','desc').limit(100).onSnapshot(s => {
+    if (!firstSupport) s.docChanges().forEach(c => { const r = c.doc.data();
+      if (c.type === 'added' && r.by !== S.email && !c.doc.metadata.hasPendingWrites) { alertNew('URGENT SUPPORT', (KIND[r.kind]||'Problem') + ' at ' + r.site + ' · ' + nameOf(r.by), true); beep(); } });
+    firstSupport = false;
+    S.support = s.docs.map(d => ({id:d.id, ...d.data()})); render(); refreshSheet(); }, fail));
+  unsubs.push(db.collection('sites').onSnapshot(s => { S.sites = s.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => ((a.no||9999) - (b.no||9999)) || (a.name||'').localeCompare(b.name||'', undefined, {numeric:true})); render(); }, fail));
+  unsubs.push(db.collection('readings').onSnapshot(s => { S.readings = {}; s.forEach(d => S.readings[d.id] = d.data().values || {}); render(); }, fail));
+  unsubs.push(db.collection('notes').orderBy('at','desc').limit(300).onSnapshot(s => { S.notes = s.docs.map(d => ({id:d.id, ...d.data()})); render(); }, fail));
+}
+const allowed = () => S.owner || !!(S.me && S.me.active);
+const nameOf = e => (S.team[e] && S.team[e].name) || (e === OWNER ? 'Supervisor' : e);
+const members = () => Object.entries(S.team).filter(([,t]) => t.active).map(([e,t]) => ({email:e, ...t})).sort((a,b) => (a.name||a.email).localeCompare(b.name||b.email));
+
+/* ---------- render ---------- */
+function typing(){ const a=document.activeElement; return a && a.closest('#view') && /^(INPUT|TEXTAREA)$/.test(a.tagName) && !/^(checkbox|radio|file)$/.test(a.type); }
+let pending=false;
+document.addEventListener('focusout', () => setTimeout(() => { if (pending && !typing()) { pending=false; render(); } }, 0));
+function fitAtt(){ const el = document.querySelector('.attwrap'); if (!el) return;
+  const top = el.getBoundingClientRect().top + window.scrollY; el.style.maxHeight = Math.max(280, window.innerHeight - top - 16) + 'px'; }
+window.addEventListener('resize', fitAtt);
+function render(){
+  document.title = (openSupport().length ? '🔴 ' : '') + (newCount() ? '(' + newCount() + ') ' : '') + 'Electrical Unit';
+  if (typing()) { pending = true; return; }
+  const ok = S.user && S.user.emailVerified && S.loaded && allowed();
+  $('#me').innerHTML = S.user ? `<div>${esc(S.owner ? 'Supervisor' : (S.me && S.me.name) || S.email)}</div><button data-act="signout">Sign out</button>` : '';
+  const tabs = TABS.filter(([k]) => !OWNER_TABS.includes(k) || S.owner);
+  if (!tabs.some(([k]) => k === S.tab)) S.tab = 'orders';
+  $('#tabs').innerHTML = ok ? tabs.map(([k,l]) => `<button class="tab" data-tab="${k}" aria-selected="${S.tab===k}">${l}${k==='orders'&&newCount()?`<span class="dot">${newCount()}</span>`:''}${k==='support'&&openSupport().length?`<span class="dot red">${openSupport().length}</span>`:''}</button>`).join('') : '';
+  const v = $('#view'); v.classList.toggle('wide', S.tab === 'attendance'); const sx = v.querySelector('.scrollx')?.scrollLeft;
+  if (!S.user) v.innerHTML = authView();
+  else if (!S.user.emailVerified) v.innerHTML = verifyView();
+  else if (!S.loaded) v.innerHTML = `<div class="empty"><b>Loading</b>Checking your access.</div>`;
+  else if (!allowed()) v.innerHTML = `<div class="gate stack"><h2>${S.me ? 'Access removed' : 'Not approved yet'}</h2><p class="muted">${S.me ? 'The supervisor has removed your access.' : 'Ask the supervisor to add <b>'+esc(S.email)+'</b> to the team. This page opens as soon as they do.'}</p></div>`;
+  else v.innerHTML = (S.tab!=='support'&&openSupport().length?supportBar():'')+({orders:ordersView, support:supportView, kwh:kwhView, attendance:attView, notes:notesView, convoy:convoyView, team:teamView})[S.tab]();
+  if (S.tab === 'convoy') cvListenCards();
+  fitAtt();
+  if (sx) { const el = v.querySelector('.scrollx'); if (el) el.scrollLeft = sx; }
+}
+
+function authView(){
+  const up = S.authMode === 'signup';
+  return `<form class="gate card stack" id="fAuth"><h2>${up ? 'Create your account' : 'Sign in'}</h2>
+  <p class="muted small" style="margin:0">${up ? 'Use the work email your supervisor added to the team.' : 'Use your work email and password.'}</p>
+  <label class="f">Email<input id="aEmail" type="email" autocomplete="email" required></label>
+  <label class="f">Password<input id="aPass" type="password" autocomplete="${up?'new-password':'current-password'}" minlength="6" required></label>
+  ${S.authMsg ? `<div class="${S.authMsg.startsWith('✓')?'ok':'err'}">${esc(S.authMsg)}</div>` : ''}
+  <button class="btn primary" type="submit">${up ? 'Create account' : 'Sign in'}</button>
+  <div class="row small"><button class="btn ghost sm" type="button" data-act="authMode">${up ? 'I already have an account' : 'First time here? Create an account'}</button>
+  ${up ? '' : '<span class="spacer"></span><button class="btn ghost sm" type="button" data-act="forgot">Forgot password</button>'}</div></form>`;
+}
+function verifyView(){
+  return `<div class="gate card stack"><h2>Check your email</h2><p class="muted" style="margin:0">We sent a link to <b>${esc(S.user.email)}</b>. Open it to confirm your email, then come back and tap the button below.</p>
+  <button class="btn primary" data-act="verified">I confirmed my email</button><button class="btn ghost sm" data-act="resend">Send the link again</button></div>`;
+}
+
+/* --- Attendance --- */
+function attView(){
+  const m = S.month, n = daysIn(m), marks = S.attendance[m] || {}; const [y, mo] = m.split('-').map(Number);
+  const td = new Date(), isCur = ym(td) === m;
+  const rows = members().map(x => x.email); Object.keys(marks).forEach(e => { if (!rows.includes(e)) rows.push(e); });
+  const days = [...Array(n)].map((_, i) => i + 1); const dow = d => new Date(y, mo - 1, d).getDay();
+  const head = `<tr><th class="nm">Electrician</th>${days.map(d => `<th class="${dow(d)%6===0?'we':''} ${isCur&&d===td.getDate()?'today':''}">${d}<br>${'SMTWTFS'[dow(d)]}</th>`).join('')}<th>P</th><th>A</th><th>L</th><th>S</th></tr>`;
+  const body = rows.map(e => { const mk = marks[e] || {}; const c = k => days.filter(d => mk[d] === k).length;
+    return `<tr><td class="nm" title="${esc(nameOf(e))}">${esc(nameOf(e))}</td>${days.map(d => { const val = mk[d] || '';
+      return `<td class="${dow(d)%6===0?'we':''} ${val?'m-'+val:''}"><button class="cell" data-act="mark" data-e="${esc(e)}" data-d="${d}" ${S.owner?'':'disabled'} aria-label="${esc(nameOf(e))} day ${d}: ${val||'blank'}">${val}</button></td>`; }).join('')}
+      <td class="tot">${c('P')}</td><td class="tot">${c('A')}</td><td class="tot">${c('L')}</td><td class="tot">${c('S')}</td></tr>`; }).join('');
+  return `<div class="stack"><div class="row"><button class="btn sm" data-act="prev" aria-label="Previous month">‹</button><h2 style="margin:0;min-width:160px;text-align:center">${esc(ymLabel(m))}</h2><button class="btn sm" data-act="next" aria-label="Next month">›</button>
+  <span class="spacer"></span>${rows.length ? '<button class="btn sm" data-act="attXlsx">Download to Excel</button>' : ''}</div>
+  <div class="legend">${MARKS.map(([k,l]) => `<span><b class="m-${k}">${k}</b>${l}</span>`).join('')}</div>
+  <p class="small muted" style="margin:0">${S.owner ? 'Tap a box to change it: P, A, L, S, O, then blank.' : 'Only the supervisor can change attendance.'}</p>
+  ${rows.length ? `<div class="scrollx attwrap"><table class="att">${head}${body}</table></div>` : `<div class="empty"><b>No electricians yet</b>${S.owner ? 'Add your team in the Team tab.' : 'The supervisor has not added the team yet.'}</div>`}</div>`;
+}
+
+/* --- kWh readings --- */
+const UNIFIL_SITES = [[1,"HQ - SWIMNG POOL",409171],[2,"HQ - MALYZIAN HOUSE",36143],[3,"HQ - INDONISIAN HOUSE",778],[4,"HQ - AUTLOG BAR",1678751],[5,"HQ - AUTLOG BAR-2 (KITCHEN)",365131],[6,"HQ - AUTLOG COMS",182224],[7,"HQ - FRENCH HOSPITAL",343805],[8,"HQ - FRENCH ACC - 1",1134484],[9,"HQ - FRENCH ACC - 2",1052990],[10,"HQ - FRENCH LIDO",412590],[11,"HQ - FRENCH WORKSHOP",265611],[12,"HQ - FRENCH PX",267937],[13,"HQ - QATAR HOUSE",12403],[14,"HQ - French-Leb Restaurant MHQ",42764],[15,"HQ - French Restaurant - Chez Ali",115664],[16,"HQ - CHAMPS ELYSEE",627500],[17,"HQ - BRAZILIAN HOUSE",229131],[18,"HQ - SPANISH COMP",135253],[19,"HQ - SPANISH HOUSE",257144],[20,"HQ - NEPAL HOUSE",84620],[21,"HQ - CHINEESE HOUSE",24118],[22,"HQ - KOURIAN HOUSE",21997],[23,"HQ - TURKISH HOUSE",27191],[24,"HQ - GERMAN HOUSE",61269],[25,"HQ - CAZA ITALIA",290968],[26,"HQ - ITALIAN MESS",2924017],[27,"HQ - ITALAIR CONT",16054],[28,"HQ - ITALIAN MESS-FREEZERS",1846852],[29,"HQ - HAIR DRESSER",7665],[30,"HQ - RESOURCE CENTER",93997],[31,"HQ - UNIFIL PX - INTERWORLD",234150],[32,"HQ - UNIFIL PX WARE HOUSE",148487],[33,"HQ - GHANA HOUSE",159127],[34,"HQ - INDIAN HOUSE",140144],[35,"HQ - IRISH HOUSE",245930],[36,"HQ - LEB ARMY ROUND ABOUT",33699],[37,"HQ - SAGARAMANTA CAFFE",62214],[38,"HQ - INTERNATIONAL MESS",2379042],[39,"HQ - BENGLADISH HOUSE",26172],[40,"HQ - NEPAL House Extension",26295],[41,"HQ- RABIEH BARBER",2203],[42,"GH - ITALAIR COFFE",6644],[43,"GH - Ciano Restaurant",586666],[44,"GH - IRISH CONT",220326],[45,"GH - FRENCH W.SHOP",88338],[46,"GH - FINISH COUMP",768968],[47,"GH - INDONISIAN PX",9471],[48,"GH - INDONISIAN BARBER",41220],[49,"GH - INDONISIAN SMALL REST",116],[50,"GH - German Offices MTF",41312],[51,"GH - Sirlankan Shop",63573],[52,"GH - GERMAN CAMP",128528],[53,"GH - GEORGES SIRLANKAN CAMP",1021],[54,"HQ - GENERATOR1-1250KVA",4413295],[55,"HQ - GENERATOR2-1250KVA",3821803],[56,"HQ - GENERATOR3-1250KVA",3446000],[57,"HQ - GENERATOR4-1250KVA",3958543],[58,"HQ - GENERATOR5-1250KVA",2876053],[59,"GH - GENERATORS 5 X 750 KVA",5318394]];
+const num = x => (x === undefined || x === null || x === '') ? null : Number(x);
+const fmt = n => n === null || isNaN(n) ? '' : Number(n).toLocaleString(undefined, {maximumFractionDigits: 2});
+function kwhRows(m){
+  const cur = S.readings[m] || {}, back = [...Array(24)].map((_, i) => S.readings[shiftYm(m, -1 - i)] || {});
+  return S.sites.map(x => { const v = num(cur[x.id] && cur[x.id].v); const pr = back.find(b => b[x.id] && num(b[x.id].v) !== null); const p = pr ? num(pr[x.id].v) : null;
+    return {site: x, v, p, used: v !== null && p !== null ? v - p : null, by: cur[x.id] && cur[x.id].by}; });
+}
+function kwhView(){
+  const m = S.kMonth, rows = kwhRows(m), f = S.kFind.toLowerCase();
+  const done = rows.filter(r => r.v !== null).length, total = rows.reduce((t, r) => t + (r.used > 0 ? r.used : 0), 0);
+  const shown = rows.filter(r => !f || (r.site.name + ' ' + (r.site.meter||'')).toLowerCase().includes(f));
+  return `<div class="stack"><div class="row"><button class="btn sm" data-act="kPrev" aria-label="Previous month">‹</button><h2 style="margin:0;min-width:160px;text-align:center">${esc(ymLabel(m))}</h2><button class="btn sm" data-act="kNext" aria-label="Next month">›</button>
+  <span class="spacer"></span>${rows.length ? '<button class="btn sm" data-act="kCsv">Download for Excel</button>' : ''}</div>
+  ${rows.length ? `<div class="kpi"><div class="card"><span class="small muted">Sites read</span><b id="kDone">${done} / ${rows.length}</b></div><div class="card"><span class="small muted">Total used this month</span><b id="kTot">${fmt(total)} kWh</b></div></div>
+  <input class="inp" id="kFind" placeholder="Search a site" value="${esc(S.kFind)}">
+  <p class="small muted" style="margin:0">Type this month's meter reading for each site. It saves on its own. "Used" is this reading minus the last one. Next month, these readings become the last readings automatically.</p>
+  <div class="scrollx card" style="padding:0"><table class="kwh"><tr><th class="s">Site</th><th>Last reading</th><th>${esc(ymLabel(m))}</th><th>Used kWh</th>${S.owner?'<th></th>':''}</tr>
+  ${shown.map(r => `<tr><td class="s"><b>${r.site.no?`<span class="muted">${r.site.no}.</span> `:''}${esc(r.site.name)}</b>${r.site.meter?`<div class="small muted">Meter ${esc(r.site.meter)}</div>`:''}</td>
+    <td>${fmt(r.p) || '<span class="muted">–</span>'}</td>
+    <td><input inputmode="decimal" class="${r.v!==null?'done':''}" data-kwh="${r.site.id}" value="${r.v===null?'':r.v}" aria-label="${esc(r.site.name)} reading" ${r.by?`title="By ${esc(nameOf(r.by))}"`:''}></td>
+    <td id="ku-${r.site.id}" class="${r.used<0?'neg':''}">${fmt(r.used) || '<span class="muted">–</span>'}</td>
+    ${S.owner?`<td><button class="btn sm ghost" data-act="delSite" data-id="${r.site.id}">Remove</button></td>`:''}</tr>`).join('')}</table></div>` 
+  : `<div class="empty"><b>No sites yet</b>${S.owner ? `<p>Load the UNIFIL list: ${UNIFIL_SITES.length} sites with their last readings, saved as ${esc(ymLabel(shiftYm(ym(new Date()),-1)))}.</p><button class="btn primary" data-act="loadSites">Load the ${UNIFIL_SITES.length} sites</button>` : 'The supervisor has not added the sites yet.'}</div>`}
+  ${S.owner ? `<form id="fSites" class="card stack" style="gap:8px"><h3 style="margin:0">Add sites</h3>
+  <textarea class="inp" id="kSites" required rows="4" placeholder="One site per line, or paste rows from Excel (No, Location, Last reading).&#10;The last reading is saved under last month."></textarea>
+  <div class="row"><span class="spacer"></span><button class="btn primary" type="submit">Add sites</button></div></form>` : ''}</div>`;
+}
+function kwhLive(){
+  const rows = kwhRows(S.kMonth); const d = $('#kDone'), tt = $('#kTot');
+  if (d) d.textContent = rows.filter(r => r.v !== null).length + ' / ' + rows.length;
+  if (tt) tt.textContent = fmt(rows.reduce((t, r) => t + (r.used > 0 ? r.used : 0), 0)) + ' kWh';
+  rows.forEach(r => { const c = document.getElementById('ku-' + r.site.id); if (c) { c.innerHTML = fmt(r.used) || '<span class="muted">–</span>'; c.className = r.used < 0 ? 'neg' : ''; } });
+}
+function kwhCsv(){
+  const m = S.kMonth, q = x => '"' + String(x ?? '').replace(/"/g, '""') + '"';
+  const lines = [['Site','Meter','Last reading','This month (' + m + ')','Used kWh','Entered by'].map(q).join(',')];
+  kwhRows(m).forEach(r => lines.push([r.site.name, r.site.meter||'', r.p ?? '', r.v ?? '', r.used ?? '', r.by ? nameOf(r.by) : ''].map(q).join(',')));
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['\ufeff' + lines.join('\r\n')], {type:'text/csv'}));
+  a.download = 'kWh-' + m + '.csv'; document.body.appendChild(a); a.click(); a.remove();
+}
+document.addEventListener('input', e => { if (e.target.id === 'cvQ') { S.cvQuery = e.target.value; cvFilter(); return; } });
+document.addEventListener('input', e => { if (e.target.id === 'kFind') { S.kFind = e.target.value; const pos = e.target.selectionStart; pending = false;
+  const v = $('#view'); v.innerHTML = (openSupport().length?supportBar():'') + kwhView(); const i = $('#kFind'); i.focus(); i.setSelectionRange(pos, pos); } });
+
+/* --- Attendance Excel --- */
+function loadExcelJS(){ return window.ExcelJS ? Promise.resolve() : new Promise((ok, no) => { const sc = document.createElement('script');
+  sc.src = 'https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js'; sc.onload = ok; sc.onerror = no; document.head.appendChild(sc); }); }
+function attXlsx(btn){
+  const label = btn.textContent; btn.disabled = true; btn.textContent = 'Preparing…';
+  loadExcelJS().then(async () => {
+    const m = S.month, n = daysIn(m), marks = S.attendance[m] || {}; const [y, mo] = m.split('-').map(Number);
+    const rows = members().map(x => x.email); Object.keys(marks).forEach(e => { if (!rows.includes(e)) rows.push(e); });
+    const dow = d => new Date(y, mo - 1, d).getDay(), we = d => dow(d) % 6 === 0;
+    const wb = new ExcelJS.Workbook(); wb.creator = 'Electrical Unit';
+    const ws = wb.addWorksheet(ymLabel(m), {pageSetup: {orientation: 'landscape', paperSize: 9, fitToPage: true, fitToWidth: 1, fitToHeight: 0, margins: {left: .3, right: .3, top: .4, bottom: .4, header: .2, footer: .2}},
+      views: [{state: 'frozen', xSplit: 2, ySplit: 5}]});
+    const totals = MARKS.map(([k]) => k), last = 2 + n + totals.length;
+    const fill = c => ({type: 'pattern', pattern: 'solid', fgColor: {argb: 'FF' + c}});
+    const thin = {style: 'thin', color: {argb: 'FFBFBFBF'}}, border = {top: thin, left: thin, bottom: thin, right: thin};
+    const COL = {P: ['E2F0D9', '375623'], A: ['F8D7DA', 'C00000'], L: ['DDEBF7', '1F4E79'], S: ['FFF2CC', '7F6000'], O: ['EDEDED', '595959']};
+    ws.columns = [{width: 5}, {width: 26}, ...Array(n).fill({width: 4.2}), ...totals.map(() => ({width: 5}))];
+    ws.mergeCells(1, 1, 1, last); Object.assign(ws.getCell(1, 1), {value: 'UNIFIL · Electrical Unit · Monthly Attendance'});
+    ws.getCell(1, 1).font = {bold: true, size: 15, color: {argb: 'FF1F1F1F'}};
+    ws.mergeCells(2, 1, 2, last); ws.getCell(2, 1).value = ymLabel(m) + '   ·   ' + rows.length + ' electrician' + (rows.length === 1 ? '' : 's');
+    ws.getCell(2, 1).font = {size: 11, color: {argb: 'FF595959'}};
+    ws.getRow(3).height = 6;
+    const h1 = ws.getRow(4), h2 = ws.getRow(5);
+    h1.values = ['No', 'Name', ...[...Array(n)].map((_, i) => i + 1), ...totals];
+    h2.values = ['', '', ...[...Array(n)].map((_, i) => 'SMTWTFS'[dow(i + 1)]), ...totals.map(() => '')];
+    ws.mergeCells(4, 1, 5, 1); ws.mergeCells(4, 2, 5, 2); totals.forEach((_, i) => ws.mergeCells(4, 3 + n + i, 5, 3 + n + i));
+    [h1, h2].forEach(r => { r.height = 18; for (let c = 1; c <= last; c++) { const cell = r.getCell(c);
+      const d = c - 2, isDay = d >= 1 && d <= n, isTot = c > 2 + n;
+      cell.font = {bold: true, size: 10, color: {argb: 'FFFFFFFF'}}; cell.alignment = {horizontal: c === 2 ? 'left' : 'center', vertical: 'middle'};
+      cell.fill = fill(isTot ? COL[totals[c - 3 - n]][1] : (isDay && we(d) ? '595959' : '1F3864')); cell.border = border; } });
+    rows.forEach((e, i) => { const mk = marks[e] || {}; const cnt = k => Object.values(mk).filter(v => v === k).length;
+      const r = ws.addRow([i + 1, nameOf(e), ...[...Array(n)].map((_, d) => mk[d + 1] || ''), ...totals.map(cnt)]); r.height = 18;
+      for (let c = 1; c <= last; c++) { const cell = r.getCell(c), d = c - 2, v = cell.value;
+        cell.border = border; cell.alignment = {horizontal: c === 2 ? 'left' : 'center', vertical: 'middle'}; cell.font = {size: 10};
+        if (d >= 1 && d <= n) { if (COL[v]) { cell.fill = fill(COL[v][0]); cell.font = {size: 10, bold: true, color: {argb: 'FF' + COL[v][1]}}; } else if (we(d)) cell.fill = fill('F2F2F2'); }
+        else if (c > 2 + n) { cell.font = {size: 10, bold: true}; cell.fill = fill('F7F7F7'); }
+        else if (c === 2) cell.font = {size: 10, bold: true}; } });
+    ws.addRow([]);
+    const lg = ws.addRow(['', 'Legend']); lg.getCell(2).font = {bold: true, size: 10};
+    MARKS.forEach(([k, l]) => { const r = ws.addRow(['', l]); const c = r.getCell(3); c.value = k; c.fill = fill(COL[k][0]); c.font = {bold: true, size: 10, color: {argb: 'FF' + COL[k][1]}}; c.alignment = {horizontal: 'center'}; c.border = border; r.getCell(2).font = {size: 10}; });
+    ws.addRow([]);
+    const sg = ws.addRow(['', 'Supervisor signature: ____________________', ...Array(Math.max(0, n - 12)).fill(''), 'Date: ' + new Date().toLocaleDateString('en-GB')]);
+    sg.getCell(2).font = sg.getCell(2 + Math.max(0, n - 12) + 1).font = {size: 10, color: {argb: 'FF595959'}};
+    ws.headerFooter.oddFooter = '&L&8Electrical Unit · ' + ymLabel(m) + '&R&8Page &P of &N';
+    const buf = await wb.xlsx.writeBuffer();
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([buf], {type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}));
+    a.download = 'Attendance ' + ymLabel(m) + '.xlsx'; document.body.appendChild(a); a.click(); a.remove();
+  }).catch(err => { console.warn(err); toast('Could not create the Excel file. Check your connection and try again.'); })
+    .finally(() => { btn.disabled = false; btn.textContent = label; });
+}
+
+/* --- Notes --- */
+function mailTeam(topic, text){
+  const to = [...new Set([OWNER, ...members().map(x => x.email)])].filter(e => e && e !== S.email);
+  if (!to.length) { toast('Add electricians in the Team tab first'); return; }
+  const subj = 'Electrical Unit note' + (topic ? ': ' + topic : '');
+  const body = text + '\n\n- ' + (S.owner ? 'Supervisor' : nameOf(S.email)) + '\nOpen the site: ' + location.origin;
+  location.href = 'mailto:' + to.join(',') + '?subject=' + encodeURIComponent(subj) + '&body=' + encodeURIComponent(body);
+}
+function notesView(){
+  const f = S.noteFilter; const list = S.notes.filter(n => f === 'all' || (f === 'pending' ? !n.done : n.done));
+  return `<div class="stack"><form id="fNote" class="card stack" style="gap:8px"><input class="inp" id="nTopic" maxlength="80" placeholder="Task or site (optional)">
+  <textarea class="inp" id="nText" required maxlength="1500" placeholder="Write a note for the team: what is still pending, parts needed, who to call"></textarea>
+  <div class="row"><span class="spacer"></span><button class="btn" type="submit" data-mail="1">Share + email team</button><button class="btn primary" type="submit">Share note</button></div></form>
+  <div class="seg">${[['pending','Pending'],['done','Done'],['all','All']].map(([k,l]) => `<button data-act="noteFilter" data-v="${k}" aria-pressed="${f===k}">${l}</button>`).join('')}</div>
+  ${list.length ? list.map(n => `<div class="card ${n.done?'':'hi'}"><div class="row"><span class="small muted"><b>${esc(nameOf(n.by))}</b> · ${esc(ago(n.at && n.at.toMillis ? n.at.toMillis() : 0))}</span><span class="spacer"></span>
+    <span class="pill ${n.done?'p-done':'p-pend'}">${n.done?'Done':'Pending'}</span></div>
+    ${n.topic ? `<div style="font-weight:600;margin-top:4px">${esc(n.topic)}</div>` : ''}<div style="white-space:pre-wrap;overflow-wrap:anywhere;margin-top:4px">${esc(n.text)}</div>
+    <div class="row" style="margin-top:8px"><button class="btn sm" data-act="toggleNote" data-id="${n.id}">${n.done?'Reopen':'Mark done'}</button><button class="btn sm" data-act="mailNote" data-id="${n.id}">Email team</button>
+    ${(S.owner || n.by === S.email) ? `<button class="btn sm ghost" data-act="delNote" data-id="${n.id}">Delete</button>` : ''}${n.done && n.doneBy ? `<span class="small muted">Closed by ${esc(nameOf(n.doneBy))}</span>` : ''}</div></div>`).join('')
+  : `<div class="empty"><b>${f==='done'?'No closed notes':'No pending notes'}</b>Notes you share are visible to the whole team.</div>`}</div>`;
+}
+
+/* --- Work orders --- */
+const newCount = () => S.orders.filter(o => o.status === 'new').length;
+const ms = t => t && t.toMillis ? t.toMillis() : (typeof t === 'number' ? t : 0);
+function orderCard(o){
+  const log = Object.values(o.log || {}).sort((a,b) => b.at - a.at); const last = log.find(l => l.text);
+  return `<button class="card click ${o.priority==='high'&&o.status!=='done'?'hot':''}" data-act="openOrder" data-id="${o.id}">
+  <div class="row"><span class="pill p-${o.status}">${STATUS[o.status]||o.status}</span>${o.priority==='high'?'<span class="pill p-high">Urgent client</span>':''}<span class="spacer"></span><span class="small muted">${esc(ago(ms(o.at)))}</span></div>
+  <div class="otitle">${esc(o.title)}</div>
+  <div class="meta">${o.client?`<span>Client: ${esc(o.client)}</span>`:''}${o.location?`<span>${esc(o.location)}</span>`:''}<span>${o.assignee?'Assigned: '+esc(nameOf(o.assignee)):'Not assigned'}</span></div>
+  ${last?`<div class="small" style="margin-top:6px"><b>${esc(nameOf(last.by))}:</b> ${esc(last.text)}</div>`:''}</button>`;
+}
+function ordersView(){
+  const f = S.orderFilter; const list = S.orders.filter(o => f === 'all' || (f === 'open' ? o.status !== 'done' : f === 'mine' ? o.assignee === S.email && o.status !== 'done' : o.status === 'done'));
+  const canNotify = 'Notification' in window && Notification.permission === 'default';
+  return `<div class="stack"><div class="row"><div class="seg">${[['open','Open'],['mine','Mine'],['done','Done'],['all','All']].map(([k,l]) => `<button data-act="orderFilter" data-v="${k}" aria-pressed="${f===k}">${l}</button>`).join('')}</div>
+  <span class="spacer"></span><button class="btn primary" data-act="newOrder">+ New job</button></div>
+  ${remember('eu.phone.ok') ? '' : `<div class="card row small"><span style="flex:1;min-width:0"><b>Phone alerts:</b> get new jobs and urgent requests on your phone, even with the site closed.</span><button class="btn sm primary" data-act="phoneSetup">Set up</button></div>`}
+  ${canNotify ? `<div class="card row small"><span style="flex:1;min-width:0">Get a pop-up on this device when a new job arrives.</span><button class="btn sm" data-act="notifyOn">Turn on alerts</button></div>` : ''}
+  ${list.length ? list.map(orderCard).join('') : `<div class="empty"><b>${f==='done'?'No finished jobs yet':f==='mine'?'Nothing assigned to you':'No open jobs'}</b>Tap “New job” when a client calls. Everyone on the team sees it.</div>`}</div>`;
+}
+function orderForm(){
+  const opts = members().map(m => `<option value="${esc(m.email)}">${esc(m.name||m.email)}</option>`).join('');
+  return `<div class="row" style="margin-bottom:12px"><h2 style="margin:0">New job</h2><span class="spacer"></span><button class="btn ghost" data-act="close">Close</button></div>
+  <form id="fOrder" class="stack">
+  <label class="f">What needs doing<input id="oTitle" required maxlength="140" placeholder="e.g. No power in kitchen sockets"></label>
+  <div class="grid2"><label class="f">Client / section<input id="oClient" maxlength="80" placeholder="e.g. Sector West HQ"></label>
+  <label class="f">Location / building<input id="oLoc" maxlength="80" placeholder="e.g. Bldg 12, room 4"></label></div>
+  <div class="grid2"><label class="f">Priority<select id="oPri"><option value="normal">Normal</option><option value="high">Urgent client</option></select></label>
+  <label class="f">Assign to<select id="oAs"><option value="">Anyone on duty</option>${opts}</select></label></div>
+  <label class="f">Details<textarea id="oDet" maxlength="1000" placeholder="Contact person, phone, what the client reported"></textarea></label>
+  <button class="btn primary" type="submit">Create and notify the team</button></form>`;
+}
+function orderDetail(id){
+  const o = S.orders.find(x => x.id === id);
+  if (!o) return `<div class="row"><h2 style="margin:0">Job removed</h2><span class="spacer"></span><button class="btn ghost" data-act="close">Close</button></div>`;
+  const log = Object.values(o.log || {}).sort((a,b) => a.at - b.at);
+  const opts = members().map(m => `<option value="${esc(m.email)}" ${o.assignee===m.email?'selected':''}>${esc(m.name||m.email)}</option>`).join('');
+  return `<div class="row" style="margin-bottom:8px"><span class="pill p-${o.status}">${STATUS[o.status]}</span>${o.priority==='high'?'<span class="pill p-high">Urgent client</span>':''}<span class="spacer"></span><button class="btn ghost" data-act="close">Close</button></div>
+  <div class="stack"><div class="otitle" style="font-size:20px;margin:0">${esc(o.title)}</div>
+  <div class="meta">${o.client?`<span>Client: ${esc(o.client)}</span>`:''}${o.location?`<span>${esc(o.location)}</span>`:''}<span>Logged by ${esc(nameOf(o.by))}, ${esc(ago(ms(o.at)))}</span></div>
+  ${o.details?`<div class="card" style="white-space:pre-wrap;overflow-wrap:anywhere;background:var(--bg)">${esc(o.details)}</div>`:''}
+  <h3>Status</h3><div class="row">${Object.entries(STATUS).map(([k,l]) => `<button class="btn sm ${o.status===k?'primary':''}" data-act="setStatus" data-id="${o.id}" data-v="${k}">${l}</button>`).join('')}</div>
+  <label class="f">Assigned to<select id="dAs" data-id="${o.id}"><option value="">Not assigned</option>${opts}</select></label>
+  <h3>Updates</h3>
+  ${log.length?`<div class="log">${log.map(l => `<div><b>${esc(nameOf(l.by))}</b> <span class="small muted">${esc(ago(l.at))}</span>${l.status?` <span class="pill p-${l.status}">${STATUS[l.status]}</span>`:''}${l.text?`<br>${esc(l.text)}`:''}</div>`).join('')}</div>`:'<div class="small muted">No updates yet.</div>'}
+  <form id="fLog" data-id="${o.id}" class="row"><input class="inp" id="logText" maxlength="500" placeholder="Write an update for the team" style="flex:1;min-width:0"><button class="btn primary" type="submit">Post</button></form>
+  ${(S.owner || o.by === S.email) ? `<div class="row"><span class="spacer"></span><button class="btn sm ghost" data-act="delOrder" data-id="${o.id}">Delete job</button></div>` : ''}</div>`;
+}
+function logEntry(extra){ return {['log.' + Date.now().toString(36) + Math.random().toString(36).slice(2,6)]: {by: S.email, at: Date.now(), ...extra}}; }
+/* phone alerts through the free ntfy app: every phone subscribed to this private topic gets a push */
+const NTFY_TOPIC = 'unifil-eu-63e19be42b2276491efaed4d77761953';
+function notifyPhones(title, urgent){ const message = 'Open the Electrical Unit site for details.';
+  try { fetch('https://ntfy.sh/', {method: 'POST', body: JSON.stringify({topic: NTFY_TOPIC, title, message,
+    priority: urgent ? 5 : 4, tags: [urgent ? 'rotating_light' : 'zap'], click: location.origin})}).catch(e => console.warn('ntfy', e)); } catch(e) {}
+}
+function phoneSetup(){
+  return `<div class="row" style="margin-bottom:12px"><h2 style="margin:0">Phone alerts</h2><span class="spacer"></span><button class="btn sm ghost" data-act="close">Close</button></div>
+  <div class="stack"><p class="muted" style="margin:0">Do this once on your phone. You will get an alert for every new daily job, urgent support request and note, even when the site is closed.</p>
+  <div class="card"><b>1. Install the free app "ntfy"</b><div class="row" style="margin-top:8px"><a class="btn sm" href="https://play.google.com/store/apps/details?id=io.heckel.ntfy" target="_blank" rel="noopener">Android</a><a class="btn sm" href="https://apps.apple.com/app/ntfy/id1625396347" target="_blank" rel="noopener">iPhone</a></div></div>
+  <div class="card"><b>2. Open ntfy, tap +, and type this name:</b><div class="row" style="margin-top:8px"><code style="font:600 15px var(--f-mono);overflow-wrap:anywhere;flex:1">${NTFY_TOPIC}</code><button class="btn sm" data-act="copyTopic">Copy</button></div>
+  <p class="small muted" style="margin:6px 0 0">Then tap Subscribe. Allow notifications if the phone asks.</p></div>
+  <div class="card"><b>3. Done.</b> <span class="muted">Tap an alert to open this site.</span></div>
+  <p class="small muted" style="margin:0">Keep this name inside the team. Alerts are only a short heads-up; the details stay on the site.</p>
+  <button class="btn primary" data-act="phoneDone">I've set it up</button></div>`;
+}
+function alertNew(title, body, urgent){
+  toast(title + ': ' + body, urgent);
+  try { if ('Notification' in window && Notification.permission === 'granted' && document.hidden) new Notification(title, {body}); } catch(e) {}
+}
+
+/* --- Urgent support --- */
+const KIND = {generator:'Generator failure', main:'Main power / distribution', short:'Short circuit / burning smell', other:'Other technical problem'};
+const SSTATUS = {open:'Waiting for help', coming:'Help on the way', working:'Working on it', parts:'Waiting parts', resolved:'Resolved'};
+const SPILL = {open:'p-urgent', coming:'p-progress', working:'p-progress', parts:'p-waiting', resolved:'p-done'};
+const openSupport = () => S.support.filter(r => r.status !== 'resolved');
+let audioCtx = null;
+addEventListener('pointerdown', () => { if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {} } }, {once:true});
+function beep(){ if (!audioCtx) return; try { [0,.3,.6].forEach(t => { const o = audioCtx.createOscillator(), g = audioCtx.createGain(); o.frequency.value = 880; o.connect(g); g.connect(audioCtx.destination);
+  g.gain.setValueAtTime(.25, audioCtx.currentTime + t); g.gain.exponentialRampToValueAtTime(.001, audioCtx.currentTime + t + .25); o.start(audioCtx.currentTime + t); o.stop(audioCtx.currentTime + t + .25); }); } catch(e) {} }
+function supportBar(){ const l = openSupport(); const r = l[0];
+  return `<button class="alertbar" data-tab="support"><span class="pulse"></span><span><b>${l.length} urgent support ${l.length>1?'requests':'request'} open</b><br><span class="small">${esc(KIND[r.kind]||'')} at ${esc(r.site)} · ${esc(nameOf(r.by))}. Tap to respond.</span></span></button>`; }
+function supportCard(r){
+  const resp = Object.keys(r.responders || {}); const open = r.status !== 'resolved';
+  const last = Object.values(r.log || {}).filter(l => l.text).sort((a,b) => b.at - a.at)[0];
+  return `<button class="card click ${open?'hot':''}" data-act="openSupport" data-id="${r.id}"><div class="row"><span class="pill ${SPILL[r.status]||'p-urgent'}">${SSTATUS[r.status]||'Waiting for help'}</span><span class="spacer"></span><span class="small muted">${esc(ago(ms(r.at)))}</span></div>
+  <div class="otitle">${esc(KIND[r.kind]||'Technical problem')} · ${esc(r.site)}</div>
+  <div class="meta"><span>Requested by <b>${esc(nameOf(r.by))}</b></span>${r.phone?`<span>Phone: <b>${esc(r.phone)}</b></span>`:''}</div>
+  <div class="meta">${resp.length?'Coming: '+resp.map(e => esc(nameOf(e))).join(', '):(open?'<b style="color:var(--urgent)">Nobody has answered yet</b>':'')}</div>
+  ${last?`<div class="small" style="margin-top:6px"><b>${esc(nameOf(last.by))}:</b> ${esc(last.text)}</div>`:''}</button>`;
+}
+function supportDetail(id){
+  const r = S.support.find(x => x.id === id);
+  if (!r) return `<div class="row"><h2 style="margin:0">Request removed</h2><span class="spacer"></span><button class="btn ghost" data-act="close">Close</button></div>`;
+  const resp = Object.keys(r.responders || {}); const mine = !!(r.responders || {})[S.email];
+  const log = Object.values(r.log || {}).sort((a,b) => a.at - b.at);
+  return `<div class="row" style="margin-bottom:8px"><span class="pill ${SPILL[r.status]||'p-urgent'}">${SSTATUS[r.status]||'Waiting for help'}</span><span class="spacer"></span><button class="btn ghost" data-act="close">Close</button></div>
+  <div class="stack"><div class="otitle" style="font-size:20px;margin:0">${esc(KIND[r.kind]||'Technical problem')} · ${esc(r.site)}</div>
+  <div class="meta"><span>Requested by <b>${esc(nameOf(r.by))}</b>, ${esc(ago(ms(r.at)))}</span>${r.phone?`<span>Phone: <b>${esc(r.phone)}</b></span>`:''}</div>
+  ${r.details?`<div class="card" style="white-space:pre-wrap;overflow-wrap:anywhere;background:var(--bg)">${esc(r.details)}</div>`:''}
+  <div class="meta">${resp.length?'Coming: '+resp.map(e => esc(nameOf(e))).join(', '):'<b style="color:var(--urgent)">Nobody has answered yet</b>'}</div>
+  ${r.status!=='resolved'&&!mine&&r.by!==S.email?`<button class="btn danger" data-act="coming" data-id="${r.id}">I'm coming</button>`:''}
+  <h3>Status</h3><div class="row">${Object.entries(SSTATUS).map(([k,l]) => `<button class="btn sm ${r.status===k?'primary':''}" data-act="setSupport" data-id="${r.id}" data-v="${k}">${l}</button>`).join('')}</div>
+  <h3>Updates</h3>
+  ${log.length?`<div class="log">${log.map(l => `<div><b>${esc(nameOf(l.by))}</b> <span class="small muted">${esc(ago(l.at))}</span>${l.status?` <span class="pill ${SPILL[l.status]}">${SSTATUS[l.status]}</span>`:''}${l.text?`<br>${esc(l.text)}`:''}</div>`).join('')}</div>`:'<div class="small muted">No updates yet.</div>'}
+  <form id="fSLog" data-id="${r.id}" class="row"><input class="inp" id="sLogText" maxlength="500" placeholder="Write an update (what you found, what you need)" style="flex:1;min-width:0"><button class="btn primary" type="submit">Post</button></form>
+  ${S.owner?`<div class="row"><span class="spacer"></span><button class="btn sm ghost" data-act="delSupport" data-id="${r.id}">Delete request</button></div>`:''}</div>`;
+}
+function supportView(){
+  const f = S.supportFilter; const list = S.support.filter(r => f === 'all' || (f === 'pending' ? r.status !== 'resolved' : r.status === 'resolved'));
+  return `<div class="stack"><button class="sos" data-act="newSupport">Request urgent support</button>
+  <p class="small muted" style="margin:0">For the technician on duty or on site who needs technical help. Everyone with the site open gets an alert with sound. Tap a request to see its updates or change its status.</p>
+  <div class="seg">${[['pending','Pending'],['resolved','Resolved'],['all','All']].map(([k,l]) => `<button data-act="supportFilter" data-v="${k}" aria-pressed="${f===k}">${l}</button>`).join('')}</div>
+  ${list.length?list.map(supportCard).join(''):`<div class="empty"><b>${f==='resolved'?'Nothing resolved yet':'No pending requests'}</b>Requests stay under Pending until someone marks them resolved.</div>`}</div>`;
+}
+function supportForm(){
+  return `<div class="row" style="margin-bottom:12px"><h2 style="margin:0;color:var(--urgent)">Request urgent support</h2><span class="spacer"></span><button class="btn ghost" data-act="close">Close</button></div>
+  <form id="fSupport" class="stack"><label class="f">Problem<select id="sKind">${Object.entries(KIND).map(([k,l]) => `<option value="${k}">${l}</option>`).join('')}</select></label>
+  <label class="f">Site / position<input id="sSite" required maxlength="80" placeholder="e.g. UNP 7-2 generator room"></label>
+  <label class="f">What is happening<textarea id="sDet" maxlength="800" placeholder="What you see, what you tried, what you need (tools, parts, people)"></textarea></label>
+  <label class="f">Your phone<input id="sPhone" maxlength="30" inputmode="tel" value="${esc(remember('eu.phone')||'')}"></label>
+  <button class="sos" type="submit">Send to the whole team</button></form>`;
+}
+
+/* ---------- sheet ---------- */
+function openSheet(html, live, kind){ $('#panel').innerHTML = html; $('#sheet').hidden = false; S.openOrder = live || null; S.sheetKind = kind || 'order'; }
+function closeSheet(){ $('#sheet').hidden = true; $('#panel').innerHTML = ''; S.openOrder = null; }
+function refreshSheet(){ if (!S.openOrder || $('#sheet').hidden) return; const a = document.activeElement;
+  if (a && a.closest('#panel') && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return; $('#panel').innerHTML = S.sheetKind === 'support' ? supportDetail(S.openOrder) : orderDetail(S.openOrder); }
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('#sheet').hidden) closeSheet(); });
+
+/* --- Convoy (supervisor only): weekly critical staff list for the Irish escort --- */
+function cvVisible(s){ if (S.cvOnly && !s.onDuty) return false; const q = S.cvQuery.trim().toLowerCase();
+  return !q || [s.no, s.name, s.idNo, s.phone, s.section, s.plate].join(' ').toLowerCase().includes(q); }
+function cvCard(s){ const img = S.cvCards[s.key];
+  return `<div class="card cvcard ${s.onDuty?'on':''}" data-cv="${esc(s.key)}" ${cvVisible(s)?'':'hidden'}>
+  <label class="pick"><input type="checkbox" data-cvtick="${esc(s.key)}" ${s.onDuty?'checked':''} aria-label="On duty this week: ${esc(s.name)}">
+  <span class="cvno">${s.no}</span><span style="min-width:0;flex:1"><span class="nmx">${esc(s.name)}</span><br><span class="small muted" style="font-family:var(--f-mono)">${esc(s.idNo||'No ID number')}</span></span></label>
+  <div class="cvthumb">${img ? `<img alt="ID card of ${esc(s.name)}" src="${img}">` : (s.hasImg ? 'Loading picture…' : 'No ID card')}</div>
+  <div class="meta"><span>${esc(s.section||'No section')}</span><span style="font-family:var(--f-mono)">${esc(s.phone||'No phone')}</span><span>${esc(s.plate||'No vehicle')}</span></div>
+  <div class="row"><span class="pill ${s.onDuty?'p-done':'p-off'}">${s.onDuty?'On duty':'Not this week'}</span><span class="spacer"></span><button class="btn sm ghost" data-act="cvEdit" data-id="${esc(s.key)}">Edit</button></div></div>`; }
+function convoyView(){
+  const C = S.cv, list = S.cvStaff, on = list.filter(s => s.onDuty).length;
+  if (!S.cvLoaded) return `<div class="empty"><b>Loading the staff list</b>Connecting to the team database.</div>`;
+  if (S.cvDenied) return `<div class="empty"><b>The database blocked the Convoy list</b>Add the Convoy lines to the Firestore rules in the Firebase console, then reload this page.</div>`;
+  return `<div class="stack">
+  <div class="card stack" style="gap:10px">
+    <div class="row"><h2 style="margin:0">Weekly convoy</h2><span class="spacer"></span><span style="font-family:var(--f-mono)"><b>${on}</b> of ${list.length} on duty</span></div>
+    <div class="small muted">Critical staff escorted by the Irish contingent. Tick who travels this week, choose the direction and date, then download.</div>
+    <div class="dirs">
+      <button class="btn" data-act="cvDir" data-v="TO" aria-pressed="${C.direction==='TO'}">To Naqoura<small>Sector West → UNIFIL HQ Naqoura</small></button>
+      <button class="btn" data-act="cvDir" data-v="FROM" aria-pressed="${C.direction==='FROM'}">From Naqoura<small>UNIFIL HQ Naqoura → Sector West</small></button>
+    </div>
+    <label class="f">Convoy date<input type="date" id="cvDate" value="${esc(C.date)}"></label>
+    <div class="row"><button class="btn primary" data-act="cvDl" data-v="docx" ${S.cvBusy?'disabled':''}>Download Word</button><button class="btn primary" data-act="cvDl" data-v="pdf" ${S.cvBusy?'disabled':''}>Download PDF</button></div>
+  </div>
+  ${list.length ? `<div class="row"><input class="inp" id="cvQ" placeholder="Search name, ID or number" value="${esc(S.cvQuery)}" style="flex:1;min-width:180px">
+    <div class="seg"><button data-act="cvShow" data-v="all" aria-pressed="${!S.cvOnly}">All</button><button data-act="cvShow" data-v="on" aria-pressed="${S.cvOnly}">On duty</button></div></div>
+  <div class="row"><button class="btn sm" data-act="cvAll" data-v="1">Tick all</button><button class="btn sm" data-act="cvAll" data-v="0">Untick all</button><span class="spacer"></span><button class="btn sm primary" data-act="cvAdd">+ Add new staff</button></div>
+  <div class="cvgrid">${list.map(cvCard).join('')}</div>`
+  : `<div class="empty stack" style="gap:10px"><b>No staff yet</b><span>Load your saved list of critical staff (the file <b>convoy-staff-import.json</b>), or add people one by one. Numbers start at 1 and never change.</span>
+    <div class="row" style="justify-content:center"><label class="btn primary">Load staff list file<input type="file" id="cvImport" accept=".json,application/json" hidden></label><button class="btn" data-act="cvAdd">+ Add new staff</button></div></div>`}
+  </div>`;
+}
+const cvNext = () => S.cvStaff.reduce((m, s) => Math.max(m, s.no || 0), 0) + 1;
+const cvKey = no => 'n' + String(no).padStart(3, '0');
+let cvEditing = null, cvPending = null;
+function cvForm(s){ cvEditing = s || null; cvPending = null; const sec = s ? s.section : (S.cvStaff[0] ? S.cvStaff[0].section : 'Electricians'); const img = s && S.cvCards[s.key];
+  return `<div class="row" style="margin-bottom:12px"><h2 style="margin:0">${s ? 'Edit staff ' + s.no : 'Add new staff'}</h2><span class="spacer"></span><button class="btn ghost" data-act="close">Close</button></div>
+  <form id="fCv" class="stack"><p class="small muted" style="margin:0">${s ? `Number ${s.no} stays the same.` : `This person will be number ${cvNext()}.`}</p>
+  <label class="f">Name<input id="cvName" required maxlength="80" value="${esc(s && s.name)}" placeholder="e.g. Elias FARAH"></label>
+  <div class="grid2"><label class="f">ID card number<input id="cvIdNo" maxlength="40" value="${esc(s && s.idNo)}" placeholder="e.g. CIV 228370"></label>
+  <label class="f">Section<input id="cvSec" maxlength="60" value="${esc(sec)}"></label></div>
+  <div class="grid2"><label class="f">Mobile<input id="cvPhone" maxlength="30" inputmode="tel" value="${esc(s && s.phone)}"></label>
+  <label class="f">Vehicle plate<input id="cvPlate" maxlength="30" value="${esc(s && s.plate)}" placeholder="e.g. UNIFIL 1980"></label></div>
+  <label class="f">ID card picture<input type="file" id="cvFile" accept="image/*" class="inp"></label>
+  <div class="row" style="align-items:flex-start"><div class="cvprev" id="cvPrev">${img ? `<img alt="" src="${img}">` : 'No picture yet'}</div>
+  <button class="btn sm" type="button" data-act="cvRotate">Turn picture ↻</button></div>
+  <div class="err" id="cvFormMsg"></div>
+  <div class="row">${s ? `<button class="btn ghost" type="button" data-act="cvDel" data-id="${esc(s.key)}">Delete from list</button>` : ''}<span class="spacer"></span><button class="btn primary" type="submit" id="cvSave">Save</button></div></form>`; }
+const loadImg = src => new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = no; im.src = src; });
+const canvasJpeg = (c, q) => c.toDataURL('image/jpeg', q || .85);
+// picture of the card: landscape, at most 1000 px wide, small enough for the database
+async function cvNormalise(file){ const url = URL.createObjectURL(file);
+  try { const im = await loadImg(url); const w = im.naturalWidth, h = im.naturalHeight, rot = h > w;
+    const sw = rot ? h : w, sh = rot ? w : h, k = Math.min(1, 1000 / sw); const c = document.createElement('canvas'); c.width = Math.round(sw * k); c.height = Math.round(sh * k);
+    const g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+    if (rot) { g.translate(0, c.height); g.rotate(-Math.PI / 2); g.drawImage(im, 0, 0, c.height, c.width); } else g.drawImage(im, 0, 0, c.width, c.height);
+    return canvasJpeg(c); } finally { URL.revokeObjectURL(url); } }
+async function cvRotate(){ const src = cvPending || (cvEditing && S.cvCards[cvEditing.key]);
+  if (!src) { $('#cvFormMsg').textContent = 'Choose an ID card picture first.'; return; }
+  const im = await loadImg(src); const c = document.createElement('canvas'); c.width = im.naturalHeight; c.height = im.naturalWidth;
+  const g = c.getContext('2d'); g.translate(c.width, 0); g.rotate(Math.PI / 2); g.drawImage(im, 0, 0); cvPending = canvasJpeg(c, .88);
+  $('#cvPrev').innerHTML = `<img alt="" src="${cvPending}">`; $('#cvFormMsg').textContent = ''; toast('Picture turned. Press Save to keep it.'); }
+async function cvSave(){ const name = val('cvName'); if (!name) { $('#cvFormMsg').textContent = "Type the staff member's name."; return; }
+  const btn = $('#cvSave'); btn.disabled = true; btn.textContent = 'Saving…';
+  const body = {name, idNo: val('cvIdNo'), section: val('cvSec'), phone: val('cvPhone'), plate: val('cvPlate')};
+  try {
+    const key = cvEditing ? cvEditing.key : cvKey(cvNext());
+    if (cvPending) { await db.collection('convoyCards').doc(key).set({img: cvPending}); body.hasImg = true; }
+    if (cvEditing) { await db.collection('convoyStaff').doc(key).update(body); toast('Saved ' + cvEditing.no + '. ' + name); }
+    else { const no = cvNext(); await db.collection('convoyStaff').doc(key).set({...body, no, onDuty: true, hasImg: !!cvPending}); toast('Added ' + no + '. ' + name + ', ticked for this week'); }
+    closeSheet();
+  } catch (e) { console.warn(e); $('#cvFormMsg').textContent = e.code === 'permission-denied' ? 'The database refused this. Check the Firestore rules for the Convoy list.' : 'Not saved. Check your connection and try again.'; btn.disabled = false; btn.textContent = 'Save'; } }
+function cvSetDuty(key, v){ const s = S.cvStaff.find(x => x.key === key); if (!s || s.onDuty === v) return;
+  s.onDuty = v; render(); db.collection('convoyStaff').doc(key).update({onDuty: v}).catch(failed); }
+function cvSaveInfo(p){ S.cv = {...S.cv, ...p}; render(); db.collection('convoyInfo').doc('current').set({date: S.cv.date, direction: S.cv.direction}).catch(failed); }
+function cvFilter(){ document.querySelectorAll('[data-cv]').forEach(el => { const s = S.cvStaff.find(x => x.key === el.dataset.cv); el.hidden = !s || !cvVisible(s); }); }
+async function cvImport(file){
+  let data; try { data = JSON.parse(await file.text()); } catch (e) { toast('That file could not be read. Choose convoy-staff-import.json.'); return; }
+  const list = (data && data.staff || []).filter(s => s && s.no && s.name);
+  if (!list.length) { toast('No staff found in that file.'); return; }
+  const have = new Set(S.cvStaff.map(s => s.no)); const todo = list.filter(s => !have.has(s.no));
+  if (!todo.length) { toast('Everyone in that file is already in the list.'); return; }
+  toast('Loading ' + todo.length + ' staff…');
+  try {
+    for (const s of todo) { const key = cvKey(s.no);
+      if (s.img) await db.collection('convoyCards').doc(key).set({img: s.img});
+      await db.collection('convoyStaff').doc(key).set({no: s.no, name: s.name, idNo: s.idNo || '', section: s.section || '', phone: s.phone || '', plate: s.plate || '', onDuty: s.onDuty !== false, hasImg: !!s.img}); }
+    if (data.convoy && !S.cv.date && !S.cv.direction) await db.collection('convoyInfo').doc('current').set({date: data.convoy.date || '', direction: data.convoy.direction || ''});
+    toast(todo.length + ' staff loaded');
+  } catch (e) { failed(e); } }
+let cvLibs = null;
+function cvLoadLibs(){ return cvLibs || (cvLibs = ['convoy/docx.umd.js', 'convoy/jspdf.umd.min.js', 'convoy/gen.js'].reduce((p, src) => p.then(() => new Promise((ok, no) => {
+  const sc = document.createElement('script'); sc.src = src; sc.onload = ok; sc.onerror = () => { cvLibs = null; no(new Error('The Word/PDF tools did not load. Check that the convoy folder was uploaded with the site.')); }; document.head.appendChild(sc); })), Promise.resolve())); }
+async function cvCardImage(key){ let src = S.cvCards[key];
+  if (!src) { const d = await db.collection('convoyCards').doc(key).get(); src = d.exists ? d.data().img : ''; }
+  if (!src) return null;
+  const im = await loadImg(src); const c = document.createElement('canvas'); c.width = im.naturalWidth; c.height = im.naturalHeight; c.getContext('2d').drawImage(im, 0, 0);
+  const dataUrl = c.toDataURL('image/jpeg', .9); const bin = atob(dataUrl.split(',')[1]); const bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return {bytes, w: c.width, h: c.height, dataUrl}; }
+function saveBlob(blob, name){ const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); }
+async function cvDownload(kind){ if (S.cvBusy) return;
+  if (!S.cv.direction) { toast('Choose the direction first: To Naqoura or From Naqoura.'); return; }
+  if (!S.cv.date) { toast('Choose the convoy date first.'); return; }
+  const on = S.cvStaff.filter(s => s.onDuty); if (!on.length) { toast('No staff are ticked. Tick the staff on duty first.'); return; }
+  S.cvBusy = true; render(); toast('Preparing the list with ' + on.length + ' staff…');
+  try { await cvLoadLibs(); const list = [];
+    for (const s of on) { let img = null; try { img = await cvCardImage(s.key); } catch (e) {} list.push({no: s.no, name: s.name, idNo: s.idNo || '', section: s.section || '', phone: s.phone || '', plate: s.plate || '', img}); }
+    const info = {date: S.cv.date, direction: S.cv.direction}, name = ConvoyGen.fileBase(info) + '.' + kind;
+    const blob = kind === 'docx' ? await docx.Packer.toBlob(ConvoyGen.buildDocx(docx, info, list)) : ConvoyGen.buildPdf(jspdf.jsPDF, info, list).output('blob');
+    saveBlob(blob, name); toast('Saved ' + name);
+  } catch (e) { console.warn(e); toast('Could not create the file. ' + (e && e.message || 'Try again.')); }
+  finally { S.cvBusy = false; render(); } }
+
+/* --- Team (supervisor only) --- */
+function teamView(){
+  const all = Object.entries(S.team).map(([e,t]) => ({email:e, ...t})).sort((a,b) => (b.active - a.active) || (a.name||a.email).localeCompare(b.name||b.email));
+  return `<div class="stack"><form id="fAdd" class="card stack" style="gap:8px"><h3 style="margin:0">Add an electrician</h3>
+  <div class="row"><input class="inp" id="tName" required maxlength="60" placeholder="Name (e.g. Ahmad, Shift B)" style="flex:1;min-width:160px"><input class="inp" id="tEmail" type="email" required placeholder="name@un.org" style="flex:1;min-width:200px"><button class="btn primary" type="submit">Add</button></div>
+  <p class="small muted" style="margin:0">Then send them this site's address. They create an account with that same email.</p></form>
+  <h3>Team (${all.filter(t => t.active).length} with access)</h3>
+  ${all.length ? all.map(t => `<div class="card row" style="${t.active?'':'opacity:.6'}"><div style="flex:1;min-width:0"><b>${esc(t.name||t.email)}</b><div class="small muted" style="overflow-wrap:anywhere">${esc(t.email)}</div></div>
+    ${t.active ? `<span class="pill p-done">Access</span><button class="btn sm" data-act="revoke" data-e="${esc(t.email)}">Remove access</button>` : `<span class="pill p-off">No access</span><button class="btn sm primary" data-act="restore" data-e="${esc(t.email)}">Give access</button>`}</div>`).join('')
+  : `<div class="empty"><b>No electricians yet</b>Add each one with their work email above.</div>`}</div>`;
+}
+
+/* ---------- actions ---------- */
+const val = id => (document.getElementById(id)?.value || '').trim();
+const failed = e => { console.warn(e); toast(e.code === 'permission-denied' ? 'You do not have permission for that.' : 'Not saved. Check your connection and try again.'); };
+document.addEventListener('click', e => {
+  if (e.target.id === 'sheet') { closeSheet(); return; }
+  const t = e.target.closest('[data-tab],[data-act]'); if (!t) return;
+  if (t.dataset.tab) { S.tab = t.dataset.tab; remember('eu.tab', S.tab); render(); return; }
+  const a = t.dataset.act;
+  if (a === 'signout') auth.signOut();
+  if (a === 'authMode') { S.authMode = S.authMode === 'signup' ? 'signin' : 'signup'; S.authMsg = ''; render(); }
+  if (a === 'forgot') { const em = val('aEmail'); if (!em) { S.authMsg = 'Type your email first, then tap Forgot password.'; render(); return; }
+    auth.sendPasswordResetEmail(em).then(() => { S.authMsg = '✓ Password reset link sent to ' + em; render(); }).catch(err => { S.authMsg = authError(err); render(); }); }
+  if (a === 'resend') S.user.sendEmailVerification().then(() => toast('Link sent again')).catch(() => toast('Wait a minute, then try again'));
+  if (a === 'verified') S.user.reload().then(() => { if (auth.currentUser.emailVerified) { S.user = auth.currentUser; auth.currentUser.getIdToken(true).then(() => { S.email = S.user.email.toLowerCase(); S.owner = S.email === OWNER; listen(); render(); }); } else toast('Not confirmed yet. Open the link in your email first.'); });
+  if (a === 'prev') { S.month = shiftYm(S.month, -1); render(); }
+  if (a === 'next') { S.month = shiftYm(S.month, 1); render(); }
+  if (a === 'mark' && S.owner) { const m = S.month, em = t.dataset.e, d = t.dataset.d;
+    const cur = ((S.attendance[m] || {})[em] || {})[d] || ''; const order = ['','P','A','L','S','O']; const nx = order[(order.indexOf(cur) + 1) % order.length];
+    S.attendance[m] = S.attendance[m] || {}; S.attendance[m][em] = {...(S.attendance[m][em] || {}), [d]: nx}; render();
+    db.collection('attendance').doc(m).set({marks: {[em]: {[d]: nx}}}, {merge: true}).catch(failed); }
+  if (a === 'attXlsx') attXlsx(t);
+  if (a === 'close') closeSheet();
+  if (a === 'newSupport') openSheet(supportForm());
+  if (a === 'coming') { const ref = db.collection('support').doc(t.dataset.id); const k = 'l' + Date.now().toString(36);
+    ref.update(new firebase.firestore.FieldPath('responders', S.email), Date.now(), 'status', 'coming', new firebase.firestore.FieldPath('log', k), {by: S.email, at: Date.now(), status: 'coming', text: 'I am coming'}).catch(failed); }
+  if (a === 'openSupport') openSheet(supportDetail(t.dataset.id), t.dataset.id, 'support');
+  if (a === 'supportFilter') { S.supportFilter = t.dataset.v; render(); }
+  if (a === 'setSupport') { const k = 'l' + Date.now().toString(36); const v = t.dataset.v;
+    const extra = v === 'resolved' ? ['resolvedBy', S.email, 'resolvedAt', Date.now()] : [];
+    db.collection('support').doc(t.dataset.id).update('status', v, new firebase.firestore.FieldPath('log', k), {by: S.email, at: Date.now(), status: v}, ...extra).catch(failed); }
+  if (a === 'delSupport') { if (t.dataset.confirm) { db.collection('support').doc(t.dataset.id).delete().catch(failed); closeSheet(); } else { t.dataset.confirm = 1; t.textContent = 'Tap again to delete'; t.classList.add('danger'); } }
+  if (a === 'newOrder') openSheet(orderForm());
+  if (a === 'openOrder') openSheet(orderDetail(t.dataset.id), t.dataset.id);
+  if (a === 'orderFilter') { S.orderFilter = t.dataset.v; render(); }
+  if (a === 'phoneSetup') openSheet(phoneSetup());
+  if (a === 'phoneDone') { remember('eu.phone.ok', '1'); closeSheet(); render(); toast('Phone alerts set up'); }
+  if (a === 'copyTopic') { try { navigator.clipboard.writeText(NTFY_TOPIC).then(() => toast('Copied')); } catch(e) { toast(NTFY_TOPIC); } }
+  if (a === 'notifyOn') Notification.requestPermission().then(() => render());
+  if (a === 'setStatus') db.collection('orders').doc(t.dataset.id).update({status: t.dataset.v, updatedAt: Date.now(), ...logEntry({status: t.dataset.v})}).catch(failed);
+  if (a === 'delOrder') { if (t.dataset.confirm) { db.collection('orders').doc(t.dataset.id).delete().catch(failed); closeSheet(); } else { t.dataset.confirm = 1; t.textContent = 'Tap again to delete'; t.classList.add('danger'); } }
+  if (a === 'mailNote') { const n = S.notes.find(x => x.id === t.dataset.id); if (n) mailTeam(n.topic, n.text); }
+  if (a === 'noteFilter') { S.noteFilter = t.dataset.v; render(); }
+  if (a === 'toggleNote') { const n = S.notes.find(x => x.id === t.dataset.id);
+    db.collection('notes').doc(n.id).update(n.done ? {done: false, doneBy: null} : {done: true, doneBy: S.email}).catch(failed); }
+  if (a === 'delNote') { if (t.dataset.confirm) db.collection('notes').doc(t.dataset.id).delete().catch(failed); else { t.dataset.confirm = 1; t.textContent = 'Tap again to delete'; t.classList.add('danger'); } }
+  if (a === 'revoke') db.collection('team').doc(t.dataset.e).update({active: false}).then(() => toast('Access removed')).catch(failed);
+  if (a === 'restore') db.collection('team').doc(t.dataset.e).update({active: true}).catch(failed);
+  if (a === 'cvDir') cvSaveInfo({direction: t.dataset.v});
+  if (a === 'cvShow') { S.cvOnly = t.dataset.v === 'on'; render(); }
+  if (a === 'cvAll') S.cvStaff.slice().forEach(s => cvSetDuty(s.key, t.dataset.v === '1'));
+  if (a === 'cvAdd') openSheet(cvForm(null), null, 'convoy');
+  if (a === 'cvEdit') openSheet(cvForm(S.cvStaff.find(s => s.key === t.dataset.id)), null, 'convoy');
+  if (a === 'cvRotate') cvRotate().catch(() => toast('Could not turn this picture.'));
+  if (a === 'cvDel') { if (t.dataset.confirm) { const s = S.cvStaff.find(x => x.key === t.dataset.id);
+      db.collection('convoyStaff').doc(t.dataset.id).delete().then(() => { db.collection('convoyCards').doc(t.dataset.id).delete().catch(() => {}); if (s) toast('Deleted ' + s.no + '. ' + s.name + ' from the list'); }).catch(failed); closeSheet(); }
+    else { t.dataset.confirm = 1; t.textContent = 'Tap again to delete for good'; t.classList.add('danger'); $('#cvFormMsg').textContent = 'To leave someone out for one week only, untick them instead.'; } }
+  if (a === 'cvDl') cvDownload(t.dataset.v);
+});
+function authError(err){
+  const c = err && err.code || '';
+  if (c.includes('invalid-credential') || c.includes('wrong-password') || c.includes('user-not-found')) return 'Email or password is wrong. First time here? Create an account.';
+  if (c.includes('email-already-in-use')) return 'This email already has an account. Sign in instead.';
+  if (c.includes('weak-password')) return 'Use a password with at least 6 characters.';
+  if (c.includes('invalid-email')) return 'That email address is not valid.';
+  if (c.includes('too-many-requests')) return 'Too many tries. Wait a few minutes and try again.';
+  return 'Something went wrong. Check your connection and try again.';
+}
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.dataset.cvtick) { cvSetDuty(t.dataset.cvtick, t.checked); return; }
+  if (t.id === 'cvDate') { cvSaveInfo({date: t.value}); return; }
+  if (t.id === 'cvImport') { const f = t.files && t.files[0]; t.value = ''; if (f) cvImport(f); return; }
+  if (t.id === 'cvFile') { const f = t.files && t.files[0]; t.value = ''; if (f) cvNormalise(f).then(d => { cvPending = d; $('#cvPrev').innerHTML = `<img alt="" src="${d}">`; $('#cvFormMsg').textContent = ''; })
+      .catch(() => { $('#cvFormMsg').textContent = 'That file could not be read as a picture. Choose a JPG or PNG photo of the card.'; }); return; }
+  if (t.dataset.kwh) { const raw = t.value.replace(/[\s,]/g, ''), id = t.dataset.kwh, m = S.kMonth;
+    if (raw !== '' && isNaN(Number(raw))) { toast('Type numbers only'); return; }
+    S.readings[m] = {...(S.readings[m] || {})}; if (raw === '') delete S.readings[m][id]; else S.readings[m][id] = {v: Number(raw), by: S.email, at: Date.now()};
+    kwhLive();
+    const ref = db.collection('readings').doc(m);
+    const p = raw === '' ? ref.set({values: {[id]: firebase.firestore.FieldValue.delete()}}, {merge: true})
+      : ref.set({values: {[id]: {v: Number(raw), by: S.email, at: Date.now()}}}, {merge: true});
+    p.then(() => { t.classList.toggle('done', raw !== ''); }).catch(failed); return; }
+  if (t.id !== 'dAs') return;
+  db.collection('orders').doc(t.dataset.id).update({assignee: t.value || null, updatedAt: Date.now(), ...logEntry({text: t.value ? 'Assigned to ' + nameOf(t.value) : 'Unassigned'})}).catch(failed);
+});
+document.addEventListener('submit', e => {
+  e.preventDefault(); const f = e.target;
+  if (f.id === 'fCv') cvSave();
+  if (f.id === 'fAuth') { const em = val('aEmail'), pw = $('#aPass').value;
+    const p = S.authMode === 'signup'
+      ? auth.createUserWithEmailAndPassword(em, pw).then(c => c.user.sendEmailVerification())
+      : auth.signInWithEmailAndPassword(em, pw);
+    p.then(() => { S.authMsg = ''; }).catch(err => { S.authMsg = authError(err); render(); }); }
+  if (f.id === 'fSLog') { const txt = val('sLogText'); if (!txt) return; const k = 'l' + Date.now().toString(36);
+    db.collection('support').doc(f.dataset.id).update(new firebase.firestore.FieldPath('log', k), {by: S.email, at: Date.now(), text: txt}).then(() => { const i = $('#sLogText'); if (i) i.value = ''; }).catch(failed); }
+  if (f.id === 'fSupport') { remember('eu.phone', val('sPhone')); const val0 = {kind: val('sKind'), site: val('sSite'), details: val('sDet'), phone: val('sPhone')};
+    db.collection('support').add({kind: val('sKind'), site: val('sSite'), details: val('sDet'), phone: val('sPhone'), status: 'open', responders: {}, log: {['l' + Date.now().toString(36)]: {by: S.email, at: Date.now(), status: 'open', text: 'Request sent'}}, by: S.email, at: firebase.firestore.FieldValue.serverTimestamp()})
+      .then(() => { toast('Urgent support request sent to everyone', true); notifyPhones('New urgent support request', true); }).catch(failed);
+    closeSheet(); }
+  if (f.id === 'fOrder') { const as = val('oAs') || null; const job = {title: val('oTitle'), location: val('oLoc'), client: val('oClient'), priority: val('oPri'), assignee: as};
+    const k = 'l' + Date.now().toString(36);
+    db.collection('orders').add({title: val('oTitle'), client: val('oClient'), location: val('oLoc'), priority: val('oPri'), assignee: as, details: val('oDet'),
+      status: 'new', by: S.email, at: firebase.firestore.FieldValue.serverTimestamp(), updatedAt: Date.now(),
+      log: {[k]: {by: S.email, at: Date.now(), status: 'new', text: 'Job logged' + (as ? ', assigned to ' + nameOf(as) : '')}}})
+      .then(() => { toast('Job sent to the team'); notifyPhones(job.priority === 'high' ? 'New urgent client job' : 'New daily job', job.priority === 'high'); }).catch(failed);
+    closeSheet(); }
+  if (f.id === 'fLog') { const txt = val('logText'); if (!txt) return;
+    db.collection('orders').doc(f.dataset.id).update({updatedAt: Date.now(), ...logEntry({text: txt})}).then(() => { const i = $('#logText'); if (i) i.value = ''; }).catch(failed); }
+  if (f.id === 'fNote') { const txt = val('nText'); if (!txt) return; const nt = val('nTopic'); if (e.submitter && e.submitter.dataset.mail) mailTeam(val('nTopic'), txt);
+    db.collection('notes').add({topic: val('nTopic'), text: txt, done: false, by: S.email, at: firebase.firestore.FieldValue.serverTimestamp()})
+      .then(() => { notifyPhones('New note for the team'); const a = $('#nText'), b = $('#nTopic'); if (a) a.value = ''; if (b) b.value = ''; a && a.blur(); }).catch(failed); }
+  if (f.id === 'fSites') { const have = new Set(S.sites.map(x => x.name.toLowerCase())); let no = Math.max(0, ...S.sites.map(x => x.no || 0));
+    const isNum = x => x !== '' && !isNaN(Number(x.replace(/[\s,]/g, '')));
+    const list = val('kSites').split(/\r?\n/).map(l => l.split('\t').map(x => x.trim()).filter(Boolean)).filter(c => c.length).map(c => {
+      if (c.length > 1 && isNum(c[0]) && !isNum(c[1])) c = c.slice(1);
+      const last = c.length > 1 && isNum(c[c.length - 1]) ? Number(c.pop().replace(/[\s,]/g, '')) : null;
+      return {name: c.join(' ').replace(/\s+/g, ' ').trim(), last}; }).filter(x => x.name && !/^(no\s+)?(location|site)\b/i.test(x.name) && !have.has(x.name.toLowerCase()) && (have.add(x.name.toLowerCase()), true));
+    if (!list.length) { toast('Those sites are already in the list'); return; }
+    const pm = shiftYm(ym(new Date()), -1), b = db.batch(), vals = {};
+    list.forEach(x => { const ref = db.collection('sites').doc(); b.set(ref, {name: x.name, no: ++no, meter: '', at: Date.now()}); if (x.last !== null) vals[ref.id] = {v: x.last, by: S.email, at: Date.now()}; });
+    if (Object.keys(vals).length) b.set(db.collection('readings').doc(pm), {values: vals}, {merge: true});
+    b.commit().then(() => { toast(list.length + ' site' + (list.length>1?'s':'') + ' added'); const i = $('#kSites'); if (i) { i.value = ''; i.blur(); } }).catch(failed); }
+  if (f.id === 'fAdd') { const em = val('tEmail').toLowerCase(), nm = val('tName'); if (!em) return;
+    db.collection('team').doc(em).set({name: nm, email: em, active: true, addedAt: firebase.firestore.FieldValue.serverTimestamp()}, {merge: true})
+      .then(() => { toast(nm + ' added'); $('#tEmail').value = ''; $('#tName').value = ''; $('#tName').blur(); }).catch(failed); }
+});
+</script>
+</body>
+</html>
