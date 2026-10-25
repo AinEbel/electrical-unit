@@ -706,7 +706,7 @@ const SPEECH={en:"en-US",fr:"fr-FR",ar:"ar-SA"};
 const CATS=["generator","ups","ats","motor","breaker","battery"];
 const LEVELS=["beginner","intermediate","advanced","professional"];
 const XP_AT=[0,200,600,1200];
-const S={lang:store.get("lang","en"),view:"dash",uid:null,name:"",isAdmin:false,canWrite:false,
+const S={lang:store.get("lang","en"),view:"rep",uid:null,name:"",isAdmin:false,canWrite:false,
   st:{xp:0,progress:{},certs:[],attempts:[],sims:[],plan:null},
   reports:[],kb:[],chunks:null,team:[],chat:[],mode:"general",
   course:null,lesson:null,quiz:null,sim:null,editing:null,repFilter:"all",partsQ:"",partsCat:"all",advice:null,kbQ:""};
@@ -721,7 +721,7 @@ const uidShort=()=>Math.random().toString(36).slice(2,10);
 
 const ICON={dash:'<path d="M3 13h8V3H3zM13 21h8V11h-8zM13 3v6h8V3zM3 21h8v-6H3z"/>',chat:'<path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/>',train:'<path d="M2 8l10-5 10 5-10 5z"/><path d="M6 10v5c3 2.5 9 2.5 12 0v-5"/>',exam:'<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>',sim:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',rep:'<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/>',parts:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>',kb:'<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/>',admin:'<path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/>',mic:'<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',spk:'<path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/>',send:'<path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/>',dl:'<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>',copy:'<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',plus:'<path d="M12 5v14M5 12h14"/>'};
 const ic=(n,cls="")=>`<svg viewBox="0 0 24 24" class="${cls}" aria-hidden="true">${ICON[n]}</svg>`;
-const VIEWS=[["dash","nav_dash"],["chat","nav_chat"],["train","nav_train"],["exam","nav_exam"],["sim","nav_sim"],["rep","nav_rep"],["parts","nav_parts"],["kb","nav_kb"],["admin","nav_admin"]];
+const VIEWS=[["rep","nav_rep"]];
 
 /* ---------- progress ---------- */
 function levelOf(xp){let i=0;XP_AT.forEach((v,k)=>{if(xp>=v)i=k});return i}
@@ -852,7 +852,7 @@ function renderShell(){
 function go(v){S.view=v;document.querySelectorAll(".nav button").forEach(b=>b.toggleAttribute("aria-current",b.dataset.go===v)||b.dataset.go===v&&b.setAttribute("aria-current","page"));renderView();window.scrollTo(0,0);try{history.replaceState(null,"","#"+v)}catch{}}
 function renderView(){
   const m=$("#main");if(!m)return;
-  const fn={signin:vSignin,dash:vDash,chat:vChat,train:vTrain,exam:vExam,sim:vSim,rep:vRep,parts:vParts,kb:vKb,admin:vAdmin}[S.view]||vDash;
+  const fn={signin:vSignin,dash:vDash,chat:vChat,train:vTrain,exam:vExam,sim:vSim,rep:vRep,parts:vParts,kb:vKb,admin:vAdmin}[S.view]||vRep;
   m.innerHTML=`<div class="wrap">${fn()}</div>`;
   after[S.view]?.();
 }
@@ -1153,7 +1153,7 @@ function vRepEdit(){
   const r=S.editing;const ro=r.id&&!(S.isAdmin||r.by===S.uid);
   const fld=(k,area)=>`<label class="f">${esc(t(k))}${area?`<textarea class="i" data-rf="${k}" ${ro?"readonly":""}>${esc(r[k]||"")}</textarea>`:`<input class="i" data-rf="${k}" value="${esc(r[k]||"")}" ${ro?"readonly":""}>`}</label>`;
   return `<div><button class="btn ghost sm" data-act="rep-back">← ${esc(t("back"))}</button></div>`+head(r.id?(r.title||t("nav_rep")):t("new_report"),r.byName?`${t("by")} ${r.byName} · ${fmtDate(r.at)}`:t("rep_sub"))+`
-  ${ro?"":`<div class="panel stack"><label class="f">${esc(t("notes"))}<textarea class="i" id="repNotes" placeholder="${esc(t("notes_ph"))}"></textarea></label><div class="row"><button class="btn" data-act="rep-draft" ${sample?"":"disabled"}>${esc(t("draft"))}</button><button class="btn ghost" data-act="mic-notes">${ic("mic")}${esc(t("voice"))}</button></div></div>`}
+  ${ro||!sample?"":`<div class="panel stack"><label class="f">${esc(t("notes"))}<textarea class="i" id="repNotes" placeholder="${esc(t("notes_ph"))}"></textarea></label><div class="row"><button class="btn" data-act="rep-draft" ${sample?"":"disabled"}>${esc(t("draft"))}</button><button class="btn ghost" data-act="mic-notes">${ic("mic")}${esc(t("voice"))}</button></div></div>`}
   <div class="panel stack">
     <div class="grid g3">${fld("title")}
       <label class="f">${esc(t("equipment"))}<input class="i" data-rf="equipment" list="eqlist" value="${esc(r.equipment||"")}" ${ro?"readonly":""}><datalist id="eqlist">${EQUIPMENT.map(e=>`<option value="${esc(e.tag)} · ${esc(e.n)}"></option>`).join("")}</datalist></label>
@@ -1375,11 +1375,14 @@ I18N.ar.ai_off="ميزات الذكاء الاصطناعي متوقفة حتى �
 Object.assign(I18N.en,{team_signin:"Team sign in",sign_out:"Sign out",signin_sub:"Optional. Team members sign in to share reports and documents and to keep progress across devices.",signin_help:"Accounts are the same as the Electrical Unit app. Create one there, then ask the supervisor to add you to the team:",member_yes:"Team member: shared reports and documents are on.",member_no:"Signed in, but not on the team yet. Ask the supervisor to add you in the Electrical Unit Team tab.",data_off:"You're using the app as a guest. Your progress is saved on this device. Team members can sign in to share reports and documents.",guest_save:"Only signed-in team members can save shared reports. You can still download the PDF.",guest_kb:"Guests can search the built-in procedures. Team members sign in to see and add the team's documents.",ai_off:"The AI features aren't switched on yet. Training content, the catalogue and library search still work."});
 Object.assign(I18N.fr,{team_signin:"Connexion équipe",sign_out:"Se déconnecter",signin_sub:"Facultatif. Les membres de l'équipe se connectent pour partager rapports et documents et retrouver leur progression partout.",signin_help:"Mêmes comptes que l'application Electrical Unit. Créez-en un, puis demandez au superviseur de vous ajouter :",member_yes:"Membre de l'équipe : rapports et documents partagés activés.",member_no:"Connecté, mais pas encore dans l'équipe. Demandez au superviseur de vous ajouter.",data_off:"Vous utilisez l'application en invité. Votre progression est enregistrée sur cet appareil. Les membres de l'équipe peuvent se connecter pour partager rapports et documents.",guest_save:"Seuls les membres connectés peuvent enregistrer des rapports partagés. Vous pouvez toujours télécharger le PDF.",guest_kb:"Les invités peuvent chercher dans les procédures intégrées. Les membres se connectent pour voir et ajouter les documents de l'équipe.",ai_off:"Les fonctions IA ne sont pas encore activées. Les cours, le catalogue et la recherche restent disponibles."});
 Object.assign(I18N.ar,{team_signin:"دخول الفريق",sign_out:"تسجيل الخروج",signin_sub:"اختياري. يسجّل أعضاء الفريق الدخول لمشاركة التقارير والمستندات وحفظ التقدّم على كل الأجهزة.",signin_help:"الحسابات نفسها في تطبيق Electrical Unit. أنشئ حساباً هناك ثم اطلب من المشرف إضافتك:",member_yes:"عضو في الفريق: التقارير والمستندات المشتركة مفعّلة.",member_no:"تم تسجيل الدخول لكنك لست في الفريق بعد. اطلب من المشرف إضافتك.",data_off:"أنت تستخدم التطبيق كزائر. يُحفظ تقدّمك على هذا الجهاز. يمكن لأعضاء الفريق تسجيل الدخول لمشاركة التقارير والمستندات.",guest_save:"فقط أعضاء الفريق المسجّلون يمكنهم حفظ التقارير المشتركة. يمكنك تنزيل PDF.",guest_kb:"يمكن للزوار البحث في الإجراءات المدمجة. يسجّل أعضاء الفريق الدخول لرؤية مستندات الفريق وإضافتها.",ai_off:"ميزات الذكاء الاصطناعي غير مفعّلة بعد. الدورات والكتالوج والبحث متاحة."});
+Object.assign(I18N.en,{rep_sub:"Fill in the maintenance report, then download it as a PDF. Team members can sign in to save reports for the team.",tagline:"Maintenance reports"});
+Object.assign(I18N.fr,{rep_sub:"Remplissez le rapport de maintenance puis téléchargez-le en PDF. Les membres de l'équipe peuvent se connecter pour l'enregistrer.",tagline:"Rapports de maintenance"});
+Object.assign(I18N.ar,{rep_sub:"املأ تقرير الصيانة ثم نزّله بصيغة PDF. يمكن لأعضاء الفريق تسجيل الدخول لحفظه للفريق.",tagline:"تقارير الصيانة"});
 Object.assign(I18N.en,{q10:"Full exam, pass mark 80%",offline_chat:"AI answers are not switched on yet. Here are the most relevant parts of the built-in procedures:",offline_none:"No procedure matches these words. Try terms like generator, UPS battery, ATS, megger, breaker or LOTO.",offline_outline:"Lessons in this course",offline_related:"From the procedures library",offline_lesson:"The full written lesson appears here when AI is switched on. You can still mark it complete, take the quiz and practise in the simulator.",offline_match:"Matches your description",offline_fits:"Used on",offline_parts:"Built-in match by equipment type and keywords. Detailed AI advice appears when AI is switched on.",offline_unsafe:"Hands-on work without isolation",offline_isolate_first:"Stop. This check needs hands-on access. Isolate the equipment first (lockout/tagout and prove dead).",offline_isolated:"The equipment is isolated, so live readings are now zero. Take live readings before isolating.",offline_locked:"Isolated and locked out",ai_off:"AI is not switched on yet, so the app uses its built-in scenarios, questions and procedures."});
 Object.assign(I18N.fr,{q10:"Examen complet, seuil 80 %",offline_chat:"Les réponses IA ne sont pas encore activées. Voici les passages les plus pertinents des procédures intégrées :",offline_none:"Aucune procédure ne correspond. Essayez generator, UPS battery, ATS, megger, breaker ou LOTO.",offline_outline:"Leçons de ce cours",offline_related:"Extraits des procédures",offline_lesson:"La leçon complète apparaîtra ici quand l'IA sera activée. Vous pouvez déjà la marquer terminée, passer le quiz et vous entraîner au simulateur.",offline_match:"Correspond à votre description",offline_fits:"Utilisé sur",offline_parts:"Correspondance intégrée par équipement et mots-clés. Les conseils IA détaillés apparaîtront quand l'IA sera activée.",offline_unsafe:"Intervention sans consignation",offline_isolate_first:"Stop. Cette vérification nécessite une intervention. Consignez d'abord l'équipement (cadenas, étiquette, VAT).",offline_isolated:"L'équipement est consigné : les mesures sous tension sont à zéro. Faites-les avant de consigner.",offline_locked:"Consigné et cadenassé",ai_off:"L'IA n'est pas encore activée : l'application utilise ses scénarios, questions et procédures intégrés."});
 Object.assign(I18N.ar,{q10:"امتحان كامل، النجاح 80٪",offline_chat:"إجابات الذكاء الاصطناعي غير مفعّلة بعد. هذه أهم الفقرات من الإجراءات المدمجة:",offline_none:"لا يوجد إجراء مطابق. جرّب كلمات مثل generator أو UPS battery أو ATS أو megger أو LOTO.",offline_outline:"دروس هذه الدورة",offline_related:"من مكتبة الإجراءات",offline_lesson:"سيظهر الدرس الكامل هنا عند تفعيل الذكاء الاصطناعي. يمكنك الآن تحديده كمكتمل وأداء الاختبار والتدرّب في المحاكي.",offline_match:"يطابق وصفك",offline_fits:"يُستخدم في",offline_parts:"مطابقة مدمجة حسب نوع الجهاز والكلمات. تظهر نصائح الذكاء الاصطناعي عند تفعيله.",offline_unsafe:"عمل يدوي بدون عزل",offline_isolate_first:"توقّف. هذا الفحص يتطلب عملاً يدوياً. اعزل الجهاز أولاً (قفل وبطاقة وتأكد من انعدام الجهد).",offline_isolated:"الجهاز معزول، لذا القراءات الحيّة صفر. خذ القراءات قبل العزل.",offline_locked:"معزول ومقفل",ai_off:"الذكاء الاصطناعي غير مفعّل بعد، لذلك يستخدم التطبيق السيناريوهات والأسئلة والإجراءات المدمجة."});
-const hv=(location.hash||"").slice(1);if(VIEWS.some(v=>v[0]===hv))S.view=hv;
-S.st={...S.st,...store.get("guest_state",{})};renderShell();
+
+S.st={...S.st,...store.get("guest_state",{})};S.editing={type:"preventive",status:"open",date:new Date().toISOString().slice(0,10)};renderShell();
 firebase.initializeApp(window.EU_CONFIG.firebase);
 const fauth=firebase.auth();
 let unsubs=[];
@@ -1391,7 +1394,7 @@ function vSignin(){
   <button class="btn primary" type="submit">${esc(t("team_signin"))}</button><p class="small" id="gmsg" style="color:var(--bad)"></p>
   <p class="small muted">${esc(t("signin_help"))} <a href="../" style="color:var(--accent)">Electrical Unit</a></p></form>`;
 }
-after.signin=()=>{const f=$("#signin");if(f)f.onsubmit=async e=>{e.preventDefault();try{const c=await fauth.signInWithEmailAndPassword($("#em").value.trim(),$("#pw").value);if(!c.user.emailVerified){$("#gmsg").textContent="Verify your email first (check your inbox), then sign in again.";await fauth.signOut();return}S.view="dash"}catch(err){$("#gmsg").textContent=err.code==="auth/invalid-credential"||err.code==="auth/wrong-password"?"Wrong email or password.":(err.message||"Sign-in failed.")}}};
+after.signin=()=>{const f=$("#signin");if(f)f.onsubmit=async e=>{e.preventDefault();try{const c=await fauth.signInWithEmailAndPassword($("#em").value.trim(),$("#pw").value);if(!c.user.emailVerified){$("#gmsg").textContent="Verify your email first (check your inbox), then sign in again.";await fauth.signOut();return}S.view="rep"}catch(err){$("#gmsg").textContent=err.code==="auth/invalid-credential"||err.code==="auth/wrong-password"?"Wrong email or password.":(err.message||"Sign-in failed.")}}};
 fauth.onAuthStateChanged(async u=>{
   unsubs.forEach(f=>f());unsubs=[];
   db=firebase.firestore();
@@ -1406,13 +1409,13 @@ fauth.onAuthStateChanged(async u=>{
   if(S.canWrite){
     try{const s=await db.doc(`ea_users/${S.uid}`).get();if(s.exists)S.st={...S.st,...s.data()}}catch(e){console.warn(e)}
     const denied=e=>{console.warn(e);if(e&&e.code==="permission-denied")toast(RULES_MSG)};
-    unsubs.push(db.collection("ea_reports").orderBy("at","desc").limit(300).onSnapshot(snap=>{S.reports=snap.docs.map(d=>({id:d.id,...d.data()}));if((S.view==="rep"&&!S.editing)||S.view==="dash"||S.view==="admin")renderView()},denied));
+    unsubs.push(db.collection("ea_reports").orderBy("at","desc").limit(300).onSnapshot(snap=>{S.reports=snap.docs.map(d=>({id:d.id,...d.data()}));if(S.view==="rep"&&!S.editing)renderView()},denied));
     unsubs.push(db.collection("ea_kb").onSnapshot(snap=>{S.kb=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.at||0)-(a.at||0));S.chunks=null;if(S.view==="kb"&&!$("#kbpanel")&&!$("#upStatus")?.textContent)renderView()},denied));
     if(S.isAdmin)unsubs.push(db.collection("ea_progress").onSnapshot(snap=>{S.team=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.xp||0)-(a.xp||0));if(S.view==="admin")renderView()},denied));
   }else{
     S.st={xp:0,progress:{},certs:[],attempts:[],sims:[],plan:null,...store.get("guest_state",{})};
   }
-  if(S.view==="admin"&&!S.isAdmin)S.view="dash";
+  if(!["rep","signin"].includes(S.view))S.view="rep";
   renderShell();
 });
 
