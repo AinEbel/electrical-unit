@@ -22,6 +22,12 @@
     var d = info.date ? info.date.split("-").reverse().join("-") : "no-date";
     return "Critical staff " + d + " - " + ROUTES[info.direction].short;
   }
+  // "UNIFIL 1980 / 4 Staff (Driver: Elias FARAH)", one entry per car used this week
+  function vehicleItems(info) {
+    return (info.vehicles || []).map(function (v) {
+      return v.plate + " / " + v.count + " Staff" + (v.driver ? " (Driver: " + v.driver + ")" : "");
+    });
+  }
   function displayDate(iso) {
     return iso ? iso.split("-").reverse().join("/") : "";
   }
@@ -144,9 +150,10 @@
           para([run(R.label + ":  ", { size: 12, bold: true, color: BLUE }), run(R.route.replace(">", "\u25b8"), { size: 12, color: BLUE })], { align: D.AlignmentType.CENTER, after: 1 }),
           para([run("Escort: Irish Contingent (IRISHBATT)", { size: 10, color: "404040" })], { align: D.AlignmentType.CENTER, after: 2 }),
           para([run("Date:  ", { size: 12, bold: true, color: BLUE }), run(displayDate(info.date), { size: 12 }),
-                run("        Staff on duty: " + staff.length, { size: 11, color: "404040" })], { align: D.AlignmentType.CENTER, after: 6 }),
+                run("        Staff on duty: " + staff.length, { size: 11, color: "404040" })], { align: D.AlignmentType.CENTER, after: vehicleItems(info).length ? 1 : 6 }),
+          vehicleItems(info).length ? para([run("Vehicles:  ", { size: 9, bold: true, color: BLUE }), run(vehicleItems(info).join("   \u00b7   "), { size: 9, color: "202020" })], { align: D.AlignmentType.CENTER, after: 4 }) : null,
           grid
-        ]
+        ].filter(Boolean)
       }]
     });
     return doc;
@@ -181,7 +188,22 @@
     pdf.setFont("helvetica", "normal"); pdf.setTextColor(0, 0, 0); pdf.text(dateVal, x0 + w1, 41.5);
     pdf.setTextColor(64, 64, 64); pdf.text(cnt, x0 + w1 + w2, 41.5);
 
-    var y = 46;
+    var y = 46, items = vehicleItems(info);
+    if (items.length) {
+      pdf.setFontSize(8.5);
+      var lines = [], cur = "Vehicles:  ";
+      items.forEach(function (it, i) { var add = (i ? "   \u00b7   " : "") + it;
+        if (pdf.getTextWidth(cur + add) > 178 && i) { lines.push(cur); cur = it; } else cur += add; });
+      lines.push(cur);
+      lines.forEach(function (ln, i) {
+        var yy = 46.5 + i * 4.2;
+        if (i === 0) { var lab = "Vehicles:  "; pdf.setFont("helvetica", "normal"); var full = pdf.getTextWidth(ln);
+          var x0 = 105 - full / 2; pdf.setFont("helvetica", "bold"); pdf.setTextColor(31, 78, 121); pdf.text(lab, x0, yy);
+          pdf.setFont("helvetica", "normal"); pdf.setTextColor(32, 32, 32); pdf.text(ln.slice(lab.length), x0 + pdf.getTextWidth(lab) + 0.3, yy); }
+        else { pdf.setFont("helvetica", "normal"); pdf.setTextColor(32, 32, 32); pdf.text(ln, 105, yy, { align: "center" }); }
+      });
+      y = 46.5 + lines.length * 4.2 - 1;
+    }
     for (var i = 0; i < staff.length; i += 2) {
       if (y + HEAD_H + BODY_H > BOTTOM) { pdf.addPage(); chrome(); y = 18; }
       for (var k = 0; k < 2; k++) {

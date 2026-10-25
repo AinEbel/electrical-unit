@@ -165,6 +165,15 @@ label.f select{width:100%;padding:10px 12px;border:1px solid var(--line);border-
 .dirs button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
 .dirs button[aria-pressed="true"] small{color:var(--accent-ink)}
 @media (max-width:420px){.dirs{grid-template-columns:1fr}}
+.cars{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+.car{border:1px solid var(--line);background:var(--sunk);border-radius:999px;padding:6px 12px;font:600 14px/1.2 var(--f-body);cursor:pointer;display:inline-flex;gap:6px;align-items:center}
+.car b{font-family:var(--f-mono);color:var(--accent)}
+.car.none{border-style:dashed;color:var(--muted)}
+.car:hover{border-color:var(--muted)}
+.cvcar{width:100%;padding:7px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:14px}
+.inlist{display:flex;flex-direction:column;gap:6px;margin:0;padding:0;list-style:none}
+.inlist li{display:flex;gap:10px;align-items:center;padding:8px 10px;background:var(--sunk);border-radius:10px}
+.inlist li .cvno{font-size:17px;min-width:26px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);border-radius:10px;padding:10px 16px;z-index:60;max-width:calc(100% - 32px)}
 </style>
 </head>
@@ -173,7 +182,7 @@ label.f select{width:100%;padding:10px 12px;border:1px solid var(--line);border-
   <div class="wrap">
     <div class="brand">
       <div class="bolt" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg></div>
-      <div><h1>Electrical Unit</h1><div class="sub">UNIFIL · Maintenance · v17</div></div>
+      <div><h1>Electrical Unit</h1><div class="sub">UNIFIL · Maintenance · v18</div></div>
       <div class="me" id="me"></div>
     </div>
     <nav class="tabs" id="tabs" aria-label="Sections"></nav>
@@ -206,7 +215,7 @@ const MARKS = [['P','Present'],['A','Absent'],['L','Leave'],['S','Sick'],['O','O
 
 const S = { user:null, email:'', owner:false, me:null, team:{}, attendance:{}, notes:[], loaded:false,
   tab: remember('eu.tab') || 'orders', orders:[], support:[], orderFilter:'open', supportFilter:'pending', openSupportId:null, openOrder:null, month: ym(new Date()), noteFilter:'pending', sites:[], readings:{}, kMonth: ym(new Date()), kFind:'', authMode:'signin', authMsg:'',
-  cvStaff:[], cvLoaded:false, cvCards:{}, cv:{date:'', direction:''}, cvOnly:false, cvQuery:'', cvBusy:false };
+  cvStaff:[], cvLoaded:false, cvCards:{}, cv:{date:'', direction:''}, cvCars:[], cvOnly:false, cvQuery:'', cvBusy:false };
 let cvCardsOn = false;
 
 if (!CFG.firebase || !CFG.firebase.apiKey) {
@@ -243,6 +252,7 @@ function listen(){
   if (S.owner) listenTeamData();
   if (S.owner) {
     unsubs.push(db.collection('convoyStaff').orderBy('no').onSnapshot(s => { S.cvStaff = s.docs.map(d => ({key:d.id, ...d.data()})); S.cvLoaded = true; render(); }, e => { console.warn(e); S.cvLoaded = true; S.cvDenied = e.code === 'permission-denied'; render(); }));
+    unsubs.push(db.collection('convoyInfo').doc('vehicles').onSnapshot(d => { S.cvCars = (d.exists && d.data().list) || []; render(); }, e => console.warn(e)));
     unsubs.push(db.collection('convoyInfo').doc('current').onSnapshot(d => { const x = d.exists ? d.data() : {}; S.cv = {date: x.date || '', direction: x.direction || ''}; render(); }, e => console.warn(e)));
   }
 }
@@ -278,7 +288,7 @@ const nameOf = e => (S.team[e] && S.team[e].name) || (e === OWNER ? 'Supervisor'
 const members = () => Object.entries(S.team).filter(([,t]) => t.active).map(([e,t]) => ({email:e, ...t})).sort((a,b) => (a.name||a.email).localeCompare(b.name||b.email));
 
 /* ---------- render ---------- */
-function typing(){ const a=document.activeElement; return a && a.closest('#view') && /^(INPUT|TEXTAREA)$/.test(a.tagName) && !/^(checkbox|radio|file)$/.test(a.type); }
+function typing(){ const a=document.activeElement; return a && a.closest('#view') && /^(INPUT|TEXTAREA)$/.test(a.tagName) && !/^(checkbox|radio|file|select-one)$/.test(a.type); }
 let pending=false;
 document.addEventListener('focusout', () => setTimeout(() => { if (pending && !typing()) { pending=false; render(); } }, 0));
 function fitAtt(){ const el = document.querySelector('.attwrap'); if (!el) return;
@@ -594,7 +604,8 @@ function cvCard(s){ const img = S.cvCards[s.key];
   <label class="pick"><input type="checkbox" data-cvtick="${esc(s.key)}" ${s.onDuty?'checked':''} aria-label="On duty this week: ${esc(s.name)}">
   <span class="cvno">${s.no}</span><span style="min-width:0;flex:1"><span class="nmx">${esc(s.name)}</span><br><span class="small muted" style="font-family:var(--f-mono)">${esc(s.idNo||'No ID number')}</span></span></label>
   <div class="cvthumb">${img ? `<img alt="ID card of ${esc(s.name)}" src="${img}">` : (s.hasImg ? 'Loading picture…' : 'No ID card')}</div>
-  <div class="meta"><span>${esc(s.section||'No section')}</span><span style="font-family:var(--f-mono)">${esc(s.phone||'No phone')}</span><span>${esc(s.plate||'No vehicle')}</span></div>
+  <div class="meta"><span>${esc(s.section||'No section')}</span><span style="font-family:var(--f-mono)">${esc(s.phone||'No phone')}</span></div>
+  <select class="cvcar" data-cvcar="${esc(s.key)}" aria-label="Vehicle for ${esc(s.name)}">${cvCarOptions(s.plate)}</select>
   <div class="row"><span class="pill ${s.onDuty?'p-done':'p-off'}">${s.onDuty?'On duty':'Not this week'}</span><span class="spacer"></span><button class="btn sm ghost" data-act="cvEdit" data-id="${esc(s.key)}">Edit</button></div></div>`; }
 function convoyView(){
   const C = S.cv, list = S.cvStaff, on = list.filter(s => s.onDuty).length;
@@ -609,6 +620,7 @@ function convoyView(){
       <button class="btn" data-act="cvDir" data-v="FROM" aria-pressed="${C.direction==='FROM'}">From Naqoura<small>UNIFIL HQ Naqoura → Sector West</small></button>
     </div>
     <label class="f">Convoy date<input type="date" id="cvDate" value="${esc(C.date)}"></label>
+    <div class="stack" style="gap:6px"><h3 style="margin:0">Vehicles this week</h3>${cvCarsRow()}</div>
     <div class="row"><button class="btn primary" data-act="cvDl" data-v="docx" ${S.cvBusy?'disabled':''}>Download Word</button><button class="btn primary" data-act="cvDl" data-v="pdf" ${S.cvBusy?'disabled':''}>Download PDF</button></div>
   </div>
   ${list.length ? `<div class="row"><input class="inp" id="cvQ" placeholder="Search name, ID or number" value="${esc(S.cvQuery)}" style="flex:1;min-width:180px">
@@ -619,6 +631,63 @@ function convoyView(){
     <div class="row" style="justify-content:center"><label class="btn primary">Load staff list file<input type="file" id="cvImport" accept=".json,application/json" hidden></label><button class="btn" data-act="cvAdd">+ Add new staff</button></div></div>`}
   </div>`;
 }
+/* --- Convoy vehicles: registered cars with a driver; staff are put in a car by its plate --- */
+const cvPlates = () => { const seen = new Set(), out = [];
+  S.cvCars.forEach(c => { const k = c.plate.toLowerCase(); if (!seen.has(k)) { seen.add(k); out.push({...c}); } });
+  S.cvStaff.forEach(s => { const p = (s.plate || '').trim(); if (p && !seen.has(p.toLowerCase())) { seen.add(p.toLowerCase()); out.push({id: '', plate: p, driver: ''}); } });
+  return out; };
+const cvInCar = plate => S.cvStaff.filter(s => s.onDuty && (s.plate || '').trim().toLowerCase() === plate.toLowerCase());
+const cvNoCar = () => S.cvStaff.filter(s => s.onDuty && !(s.plate || '').trim());
+function cvCarOptions(cur){ cur = (cur || '').trim();
+  return `<option value="">No vehicle</option>` + cvPlates().map(c => `<option value="${esc(c.plate)}" ${c.plate.toLowerCase() === cur.toLowerCase() ? 'selected' : ''}>${esc(c.plate)}</option>`).join(''); }
+function cvCarsRow(){ const cars = cvPlates(), none = cvNoCar().length;
+  return `<div class="cars">${cars.map(c => `<button class="car" data-act="cvCar" data-plate="${esc(c.plate)}">${esc(c.plate)} <b>${cvInCar(c.plate).length}</b></button>`).join('')}
+  ${none ? `<button class="car none" data-act="cvCar" data-plate="">No vehicle <b>${none}</b></button>` : ''}
+  <button class="btn sm" data-act="cvCarNew">+ Add vehicle</button></div>`; }
+function cvCarSheet(plate){
+  if (!plate) { const l = cvNoCar();
+    return `<div class="row" style="margin-bottom:12px"><h2 style="margin:0">No vehicle · ${l.length}</h2><span class="spacer"></span><button class="btn ghost" data-act="close">Close</button></div>
+    <p class="small muted" style="margin-top:0">Staff on duty who are not in a car yet. Choose a car on their card.</p>${cvInList(l)}`; }
+  const c = cvPlates().find(x => x.plate.toLowerCase() === plate.toLowerCase()) || {plate, driver: ''}, l = cvInCar(plate);
+  return `<div class="row" style="margin-bottom:12px"><h2 style="margin:0">${esc(c.plate)}</h2><span class="spacer"></span><button class="btn ghost" data-act="close">Close</button></div>
+  <div class="stack" style="gap:10px"><div class="row"><span class="pill p-done">${l.length} staff</span><span class="muted">Driver: <b style="color:var(--ink)">${esc(c.driver || 'not set')}</b></span></div>
+  ${l.length ? cvInList(l) : '<div class="empty small">Nobody on duty is in this car yet. Choose this car on a staff card.</div>'}
+  <div class="row"><span class="spacer"></span><button class="btn" data-act="cvCarEdit" data-plate="${esc(c.plate)}">Edit vehicle</button></div></div>`; }
+function cvInList(l){ return `<ul class="inlist">${l.map(s => `<li><span class="cvno">${s.no}</span><span><b>${esc(s.name)}</b><br><span class="small muted">${esc(s.phone || '')}</span></span></li>`).join('')}</ul>`; }
+let cvCarEditing = null;
+function cvCarForm(c){ cvCarEditing = c || null;
+  return `<div class="row" style="margin-bottom:12px"><h2 style="margin:0">${c ? 'Edit vehicle' : 'Add vehicle'}</h2><span class="spacer"></span><button class="btn ghost" data-act="close">Close</button></div>
+  <form id="fCar" class="stack"><label class="f">Plate number<input id="carPlate" required maxlength="30" value="${esc(c && c.plate)}" placeholder="e.g. UNIFIL 1980"></label>
+  <label class="f">Driver<input id="carDriver" list="cvNames" maxlength="80" value="${esc(c && c.driver)}" placeholder="Choose from staff or type a name"></label>
+  <datalist id="cvNames">${S.cvStaff.map(s => `<option value="${esc(s.name)}">`).join('')}</datalist>
+  <p class="small muted" style="margin:0">If the driver is on your staff list, they are put in this car automatically.</p>
+  <div class="err" id="carMsg"></div>
+  <div class="row">${c ? `<button class="btn ghost" type="button" data-act="cvCarDel" data-plate="${esc(c.plate)}">Remove vehicle</button>` : ''}<span class="spacer"></span><button class="btn primary" type="submit">Save</button></div></form>`; }
+async function cvCarSave(){
+  const plate = val('carPlate').replace(/\s+/g, ' '), driver = val('carDriver'); if (!plate) return;
+  const old = cvCarEditing ? cvCarEditing.plate : '';
+  if (S.cvCars.some(c => c.plate.toLowerCase() === plate.toLowerCase() && c.plate.toLowerCase() !== old.toLowerCase())) { $('#carMsg').textContent = 'This plate is already in the list.'; return; }
+  const list = S.cvCars.filter(c => !old || c.plate.toLowerCase() !== old.toLowerCase());
+  const idx = old ? S.cvCars.findIndex(c => c.plate.toLowerCase() === old.toLowerCase()) : -1;
+  const car = {id: (cvCarEditing && cvCarEditing.id) || ('v' + Date.now().toString(36)), plate, driver};
+  if (idx >= 0) list.splice(idx, 0, car); else list.push(car);
+  try {
+    await db.collection('convoyInfo').doc('vehicles').set({list});
+    const b = db.batch(); let n = 0;
+    if (old && old.toLowerCase() !== plate.toLowerCase()) S.cvStaff.filter(s => (s.plate || '').trim().toLowerCase() === old.toLowerCase()).forEach(s => { b.update(db.collection('convoyStaff').doc(s.key), {plate}); n++; });
+    const d = S.cvStaff.find(s => s.name.trim().toLowerCase() === driver.toLowerCase());
+    if (d && (d.plate || '').trim().toLowerCase() !== plate.toLowerCase()) { b.update(db.collection('convoyStaff').doc(d.key), {plate}); n++; }
+    if (n) await b.commit();
+    toast(plate + ' saved'); openSheet(cvCarSheet(plate), null, 'convoy');
+  } catch (e) { failed(e); } }
+async function cvCarDel(plate){
+  try { await db.collection('convoyInfo').doc('vehicles').set({list: S.cvCars.filter(c => c.plate.toLowerCase() !== plate.toLowerCase())});
+    const b = db.batch(); let n = 0;
+    S.cvStaff.filter(s => (s.plate || '').trim().toLowerCase() === plate.toLowerCase()).forEach(s => { b.update(db.collection('convoyStaff').doc(s.key), {plate: ''}); n++; });
+    if (n) await b.commit(); toast(plate + ' removed'); closeSheet();
+  } catch (e) { failed(e); } }
+// for the PDF and Word file: cars used this week, with ticked staff only
+const cvVehicleSummary = () => cvPlates().map(c => ({plate: c.plate, driver: c.driver, count: cvInCar(c.plate).length})).filter(c => c.count);
 const cvNext = () => S.cvStaff.reduce((m, s) => Math.max(m, s.no || 0), 0) + 1;
 const cvKey = no => 'n' + String(no).padStart(3, '0');
 let cvEditing = null, cvPending = null;
@@ -629,7 +698,7 @@ function cvForm(s){ cvEditing = s || null; cvPending = null; const sec = s ? s.s
   <div class="grid2"><label class="f">ID card number<input id="cvIdNo" maxlength="40" value="${esc(s && s.idNo)}" placeholder="e.g. CIV 228370"></label>
   <label class="f">Section<input id="cvSec" maxlength="60" value="${esc(sec)}"></label></div>
   <div class="grid2"><label class="f">Mobile<input id="cvPhone" maxlength="30" inputmode="tel" value="${esc(s && s.phone)}"></label>
-  <label class="f">Vehicle plate<input id="cvPlate" maxlength="30" value="${esc(s && s.plate)}" placeholder="e.g. UNIFIL 1980"></label></div>
+  <label class="f">Vehicle<select id="cvPlate">${cvCarOptions(s && s.plate)}</select></label></div>
   <label class="f">ID card picture<input type="file" id="cvFile" accept="image/*" class="inp"></label>
   <div class="row" style="align-items:flex-start"><div class="cvprev" id="cvPrev">${img ? `<img alt="" src="${img}">` : 'No picture yet'}</div>
   <button class="btn sm" type="button" data-act="cvRotate">Turn picture ↻</button></div>
@@ -694,7 +763,7 @@ async function cvDownload(kind){ if (S.cvBusy) return;
   S.cvBusy = true; render(); toast('Preparing the list with ' + on.length + ' staff…');
   try { await cvLoadLibs(); const list = [];
     for (const s of on) { let img = null; try { img = await cvCardImage(s.key); } catch (e) {} list.push({no: s.no, name: s.name, idNo: s.idNo || '', section: s.section || '', phone: s.phone || '', plate: s.plate || '', img}); }
-    const info = {date: S.cv.date, direction: S.cv.direction}, name = ConvoyGen.fileBase(info) + '.' + kind;
+    const info = {date: S.cv.date, direction: S.cv.direction, vehicles: cvVehicleSummary()}, name = ConvoyGen.fileBase(info) + '.' + kind;
     const blob = kind === 'docx' ? await docx.Packer.toBlob(ConvoyGen.buildDocx(docx, info, list)) : ConvoyGen.buildPdf(jspdf.jsPDF, info, list).output('blob');
     saveBlob(blob, name); toast('Saved ' + name);
   } catch (e) { console.warn(e); toast('Could not create the file. ' + (e && e.message || 'Try again.')); }
@@ -769,6 +838,10 @@ document.addEventListener('click', e => {
       db.collection('convoyStaff').doc(t.dataset.id).delete().then(() => { db.collection('convoyCards').doc(t.dataset.id).delete().catch(() => {}); if (s) toast('Deleted ' + s.no + '. ' + s.name + ' from the list'); }).catch(failed); closeSheet(); }
     else { t.dataset.confirm = 1; t.textContent = 'Tap again to delete for good'; t.classList.add('danger'); $('#cvFormMsg').textContent = 'To leave someone out for one week only, untick them instead.'; } }
   if (a === 'cvDl') cvDownload(t.dataset.v);
+  if (a === 'cvCar') openSheet(cvCarSheet(t.dataset.plate), null, 'convoy');
+  if (a === 'cvCarNew') openSheet(cvCarForm(null), null, 'convoy');
+  if (a === 'cvCarEdit') openSheet(cvCarForm(cvPlates().find(c => c.plate === t.dataset.plate)), null, 'convoy');
+  if (a === 'cvCarDel') { if (t.dataset.confirm) cvCarDel(t.dataset.plate); else { t.dataset.confirm = 1; t.textContent = 'Tap again to remove'; t.classList.add('danger'); } }
 });
 function authError(err){
   const c = err && err.code || '';
@@ -783,6 +856,7 @@ document.addEventListener('change', e => {
   const t = e.target;
   if (t.dataset.cvtick) { cvSetDuty(t.dataset.cvtick, t.checked); return; }
   if (t.id === 'cvDate') { cvSaveInfo({date: t.value}); return; }
+  if (t.dataset.cvcar) { const s = S.cvStaff.find(x => x.key === t.dataset.cvcar); if (s) { s.plate = t.value; render(); db.collection('convoyStaff').doc(s.key).update({plate: t.value}).catch(failed); } return; }
   if (t.id === 'cvImport') { const f = t.files && t.files[0]; t.value = ''; if (f) cvImport(f); return; }
   if (t.id === 'cvFile') { const f = t.files && t.files[0]; t.value = ''; if (f) cvNormalise(f).then(d => { cvPending = d; $('#cvPrev').innerHTML = `<img alt="" src="${d}">`; $('#cvFormMsg').textContent = ''; })
       .catch(() => { $('#cvFormMsg').textContent = 'That file could not be read as a picture. Choose a JPG or PNG photo of the card.'; }); return; }
@@ -800,6 +874,7 @@ document.addEventListener('change', e => {
 document.addEventListener('submit', e => {
   e.preventDefault(); const f = e.target;
   if (f.id === 'fCv') cvSave();
+  if (f.id === 'fCar') cvCarSave();
   if (f.id === 'fAuth') { const em = val('aEmail'), pw = $('#aPass').value;
     const p = S.authMode === 'signup'
       ? auth.createUserWithEmailAndPassword(em, pw).then(c => c.user.sendEmailVerification())
