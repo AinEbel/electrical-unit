@@ -1,0 +1,1070 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#16232F">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Electrical Assistant</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: control-room console. Fixed nav rail (top strip on phones), one working pane, nameplate-style panels. */
+:root{
+  --bg:#EEF1F4; --panel:#FFFFFF; --sunk:#E3E8EE; --line:#CDD5DE; --ink:#14202B; --muted:#5A6878;
+  --accent:#B86E00; --accent-ink:#FFFFFF; --accent-soft:#FBEBD2;
+  --ok:#1E7A46; --ok-soft:#DDF1E5; --warn:#A35C00; --warn-soft:#FCEBCF; --bad:#B42318; --bad-soft:#FBE1DE;
+  --rail:#16232F; --rail-ink:#C9D4DE; --rail-active:#F2A93B;
+  --f-display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"IBM Plex Sans","IBM Plex Sans Arabic",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,monospace;
+  --r:6px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E151B; --panel:#162029; --sunk:#1D2933; --line:#2B3946; --ink:#E4EBF1; --muted:#93A3B3;
+  --accent:#F2A93B; --accent-ink:#1A1206; --accent-soft:#3A2C14;
+  --ok:#5CC98A; --ok-soft:#163626; --warn:#F2B35B; --warn-soft:#3A2B12; --bad:#F2877C; --bad-soft:#3E1C19;
+  --rail:#0A1015; --rail-ink:#A9B7C4; --rail-active:#F2A93B; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E151B; --panel:#162029; --sunk:#1D2933; --line:#2B3946; --ink:#E4EBF1; --muted:#93A3B3;
+  --accent:#F2A93B; --accent-ink:#1A1206; --accent-soft:#3A2C14;
+  --ok:#5CC98A; --ok-soft:#163626; --warn:#F2B35B; --warn-soft:#3A2B12; --bad:#F2877C; --bad-soft:#3E1C19;
+  --rail:#0A1015; --rail-ink:#A9B7C4; --rail-active:#F2A93B; color-scheme:dark}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.5}
+*{box-sizing:border-box}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--rail)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3{font-family:var(--f-display);letter-spacing:.01em;text-wrap:balance;margin:0;line-height:1.15}
+h1{font-size:2rem;font-weight:700}
+h2{font-size:1.45rem;font-weight:600}
+h3{font-size:1.15rem;font-weight:600}
+p{margin:0}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.small{font-size:.85rem}
+.label{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+
+.app{display:grid;grid-template-columns:232px minmax(0,1fr);min-height:100%}
+.rail{background:var(--rail);color:var(--rail-ink);position:sticky;top:env(safe-area-inset-top,0px);height:calc(100vh - env(safe-area-inset-top,0px));display:flex;flex-direction:column;gap:18px;padding:20px 12px;padding-left:max(12px,env(safe-area-inset-left,0px))}
+[dir="rtl"] .rail{padding-left:12px;padding-right:max(12px,env(safe-area-inset-right,0px))}
+.brand{display:flex;align-items:center;gap:10px;padding:0 6px}
+.brand svg{flex:none}
+.brand b{font-family:var(--f-display);font-size:1.35rem;font-weight:700;color:#fff;letter-spacing:.02em;line-height:1}
+.brand span{display:block;font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:var(--rail-ink);margin-top:3px}
+.nav{display:flex;flex-direction:column;gap:2px;overflow:auto}
+.nav button{all:unset;cursor:pointer;display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--r);font-size:.92rem;color:var(--rail-ink);white-space:nowrap}
+.nav button:hover{background:rgba(255,255,255,.06);color:#fff}
+.nav button[aria-current="page"]{background:rgba(242,169,59,.14);color:#fff;box-shadow:inset 3px 0 0 var(--rail-active)}
+[dir="rtl"] .nav button[aria-current="page"]{box-shadow:inset -3px 0 0 var(--rail-active)}
+.nav button:focus-visible{outline:2px solid var(--rail-active)}
+.nav svg{flex:none;width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.rail-foot{margin-top:auto;display:flex;flex-direction:column;gap:8px;padding:0 6px}
+.rail-foot select{background:transparent;border:1px solid rgba(255,255,255,.18);border-radius:var(--r);padding:6px 8px;color:#fff;color-scheme:dark}
+.rail-foot select option{color:#000}
+
+.main{min-width:0;padding-block:28px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+@media(min-width:900px){.main{padding-left:36px;padding-right:max(36px,env(safe-area-inset-right,0px))}}
+.wrap{max-width:1120px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+.head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.head p{color:var(--muted);max-width:62ch;margin-top:4px}
+
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px;min-width:0}
+.panel>h3{margin-bottom:12px}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr))}
+.g3{grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))}
+.g4{grid-template-columns:repeat(auto-fit,minmax(min(100%,190px),1fr))}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.stack{display:flex;flex-direction:column;gap:12px}
+.spread{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px}
+
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--line);background:var(--panel);border-radius:var(--r);padding:8px 14px;cursor:pointer;font-weight:500;font-size:.92rem;line-height:1.2}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.06)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--muted)}
+.btn.ghost:hover{color:var(--ink);background:var(--sunk)}
+.btn.danger{color:var(--bad);border-color:var(--bad-soft)}
+.btn.sm{padding:5px 10px;font-size:.84rem}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+label.f{display:flex;flex-direction:column;gap:5px;font-size:.85rem;color:var(--muted);font-weight:500;min-width:0}
+input.i,select.i,textarea.i{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;color:var(--ink);font-size:.95rem}
+textarea.i{resize:vertical;min-height:84px}
+input.i:focus,select.i:focus,textarea.i:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+
+.chip{display:inline-flex;align-items:center;gap:5px;padding:2px 9px;border-radius:99px;font-size:.76rem;font-weight:600;background:var(--sunk);color:var(--muted);white-space:nowrap}
+.chip.ok{background:var(--ok-soft);color:var(--ok)}
+.chip.warn{background:var(--warn-soft);color:var(--warn)}
+.chip.bad{background:var(--bad-soft);color:var(--bad)}
+.chip.acc{background:var(--accent-soft);color:var(--accent)}
+.seg{display:inline-flex;flex-wrap:wrap;gap:4px;background:var(--sunk);padding:3px;border-radius:calc(var(--r) + 2px)}
+.seg button{all:unset;cursor:pointer;padding:5px 11px;border-radius:var(--r);font-size:.85rem;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--panel);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.seg button:focus-visible{outline:2px solid var(--accent)}
+
+.bar{height:6px;background:var(--sunk);border-radius:9px;overflow:hidden}
+.bar>i{display:block;height:100%;background:var(--accent);border-radius:9px}
+.stat b{display:block;font-family:var(--f-display);font-size:2.1rem;font-weight:600;line-height:1.05;font-variant-numeric:tabular-nums}
+
+.safety{display:flex;gap:12px;align-items:flex-start;border:1px solid var(--warn);background:var(--warn-soft);color:var(--ink);border-radius:var(--r);padding:12px 14px}
+.safety .stripe{flex:none;width:28px;height:28px;border-radius:4px;background:repeating-linear-gradient(135deg,var(--warn) 0 6px,transparent 6px 12px);border:1px solid var(--warn)}
+.notice{border:1px dashed var(--line);border-radius:var(--r);padding:12px 14px;color:var(--muted);font-size:.9rem}
+
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r)}
+table{border-collapse:collapse;width:100%;font-size:.9rem}
+th,td{text-align:start;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);background:var(--sunk);font-weight:600;white-space:nowrap}
+tr:last-child td{border-bottom:0}
+td.num{text-align:end;font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+
+.md{line-height:1.6;overflow-wrap:anywhere}
+.md>*+*{margin-top:.6em}
+.md h1,.md h2,.md h3,.md h4{font-family:var(--f-display);margin-top:1em}
+.md h1{font-size:1.5rem}.md h2{font-size:1.3rem}.md h3,.md h4{font-size:1.1rem}
+.md ul,.md ol{padding-inline-start:1.3em;margin-bottom:0}
+.md code{font-family:var(--f-mono);font-size:.88em;background:var(--sunk);padding:1px 5px;border-radius:4px}
+.md pre{background:var(--sunk);padding:10px;border-radius:var(--r);overflow-x:auto}
+.md pre code{background:none;padding:0}
+.md table{display:block;overflow-x:auto;border:1px solid var(--line);border-radius:var(--r)}
+.md blockquote{margin:0;padding:8px 12px;border-inline-start:3px solid var(--warn);background:var(--warn-soft);border-radius:4px}
+.md details{background:var(--sunk);padding:8px 12px;border-radius:var(--r)}
+
+/* chat */
+.chat{display:flex;flex-direction:column;gap:14px;min-height:240px}
+.msg{display:flex;flex-direction:column;gap:6px;max-width:100%}
+.msg.u{align-self:flex-end;max-width:min(80%,640px)}
+.msg.u .bub{background:var(--accent-soft);border:1px solid transparent}
+.bub{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;min-width:0}
+.msg-tools{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.composer{position:sticky;bottom:0;background:var(--bg);padding-block:10px calc(10px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:8px}
+.composer .box{display:flex;gap:8px;align-items:flex-end;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:6px}
+.composer textarea{flex:1;min-width:0;border:0;background:transparent;resize:none;min-height:44px;max-height:180px;padding:8px;outline:none}
+.cites{display:flex;flex-wrap:wrap;gap:6px}
+.cite{font-size:.78rem;border:1px solid var(--line);border-radius:99px;padding:2px 9px;background:var(--sunk);cursor:pointer;color:var(--ink)}
+.typing{display:inline-flex;gap:4px}.typing i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:blink 1.2s infinite}
+.typing i:nth-child(2){animation-delay:.2s}.typing i:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,80%,100%{opacity:.25}40%{opacity:1}}
+
+/* nameplate: used for equipment, scenario, certificate */
+.plate{border:1px solid var(--line);border-radius:var(--r);background:linear-gradient(180deg,var(--sunk),var(--panel) 46px);padding:14px 16px;min-width:0}
+.plate .readings{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-top:10px}
+.reading{background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:6px 9px}
+.reading .v{font-family:var(--f-mono);font-size:1rem;font-variant-numeric:tabular-nums}
+.alarm{font-family:var(--f-mono);font-size:.82rem;color:var(--bad);background:var(--bad-soft);border-radius:4px;padding:3px 8px;display:inline-block}
+
+.list{display:flex;flex-direction:column}
+.item{display:flex;gap:12px;align-items:center;justify-content:space-between;padding:11px 2px;border-bottom:1px solid var(--line);min-width:0}
+.item:last-child{border-bottom:0}
+.item .t{min-width:0;overflow-wrap:anywhere}
+.lvl-head{display:flex;align-items:baseline;gap:10px;margin:6px 0 2px}
+.course{display:flex;flex-direction:column;gap:10px;cursor:pointer;text-align:start;width:100%}
+.course:hover{border-color:var(--accent)}
+.q{border:1px solid var(--line);border-radius:var(--r);padding:14px;display:flex;flex-direction:column;gap:8px}
+.opt{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border:1px solid var(--line);border-radius:var(--r);cursor:pointer}
+.opt:has(input:checked){border-color:var(--accent);background:var(--accent-soft)}
+.opt.right{border-color:var(--ok);background:var(--ok-soft)}
+.opt.wrong{border-color:var(--bad);background:var(--bad-soft)}
+.cert{border:2px solid var(--accent);border-radius:var(--r);padding:22px;background:var(--panel);text-align:center;display:flex;flex-direction:column;gap:6px;align-items:center}
+.cert h3{font-size:1.5rem}
+.log{display:flex;flex-direction:column;gap:10px;max-height:460px;overflow:auto}
+.log .e{border-inline-start:3px solid var(--line);padding:4px 0;padding-inline-start:12px}
+.log .e.me{border-color:var(--accent)}
+.log .e.flag{border-color:var(--bad)}
+mark{background:var(--accent-soft);color:inherit;padding:0 2px;border-radius:2px}
+.toast{position:fixed;bottom:calc(18px + env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:var(--r);font-size:.9rem;z-index:50;max-width:calc(100% - 32px);box-shadow:0 6px 24px rgba(0,0,0,.25)}
+.drop{border:2px dashed var(--line);border-radius:var(--r);padding:22px;text-align:center;color:var(--muted);cursor:pointer}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+
+@media(max-width:860px){
+  .app{grid-template-columns:minmax(0,1fr)}
+  .rail{position:sticky;height:auto;flex-direction:row;align-items:center;gap:10px;padding:10px 0;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));z-index:5;flex-wrap:wrap}
+  [dir="rtl"] .rail{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .brand span{display:none}
+  .rail-foot{margin:0;margin-inline-start:auto;flex-direction:row;padding:0}
+  .rail-foot .who{display:none}
+  .nav{flex-direction:row;order:3;width:100%;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+  .nav button{padding:7px 10px;font-size:.86rem}
+  .nav button[aria-current="page"],[dir="rtl"] .nav button[aria-current="page"]{box-shadow:inset 0 -2px 0 var(--rail-active)}
+  .msg.u{max-width:92%}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+// Same Firebase project and supervisor as the Electrical Unit app.
+window.EU_CONFIG = {
+  // Supervisor email. Only this account can manage the team and attendance.
+  ownerEmail: "farah12@un.org",
+
+  // Firebase project "electrical-unit".
+  firebase: {
+    apiKey: "AIzaSyAm1fxMbp_KX73XVpkNsVM0Z6L5ypd3vdA",
+    authDomain: "electrical-unit.firebaseapp.com",
+    projectId: "electrical-unit",
+    storageBucket: "electrical-unit.firebasestorage.app",
+    messagingSenderId: "969724931612",
+    appId: "1:969724931612:web:b932e12d63898644c079d9"
+  }
+};
+</script>
+</head><body>
+<div id="app"><p style="padding:24px;font-family:system-ui">Loading Electrical Assistant…</p></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+const COURSES=[{"id": "electrical-safety-fundamentals", "t": "Electrical Safety Fundamentals", "lv": "beginner", "cat": null, "d": "Hazards of electricity, shock and arc flash, PPE, LOTO and test-before-touch.", "ls": ["How electricity injures: shock, arc flash, arc blast", "PPE selection and inspection", "Lockout/tagout step by step", "Test before touch with a voltage tester", "Emergency response to electrical incidents"]}, {"id": "electrical-principles", "t": "Electrical Principles for Technicians", "lv": "beginner", "cat": null, "d": "Voltage, current, resistance, power, AC vs DC, single- and three-phase systems.", "ls": ["Ohm's law and power", "AC fundamentals: frequency, RMS, power factor", "Three-phase systems: star and delta", "Reading single-line diagrams"]}, {"id": "test-instruments", "t": "Using Test Instruments Safely", "lv": "beginner", "cat": null, "d": "Multimeters, clamp meters, insulation testers and CAT ratings.", "ls": ["Meter categories (CAT II-IV) and why they matter", "Measuring voltage, current and continuity", "Insulation resistance testing", "Recording and interpreting readings"]}, {"id": "battery-basics", "t": "Battery Systems Basics", "lv": "beginner", "cat": "battery", "d": "Lead-acid and VRLA batteries, safety, float and equalize charging, inspections.", "ls": ["Battery chemistries in standby power", "Battery room hazards and PPE", "Float, boost and equalize charging", "Routine battery inspection"]}, {"id": "generator-operation-maintenance", "t": "Standby Generator Operation & Maintenance", "lv": "intermediate", "cat": "generator", "d": "Diesel gensets: engine systems, alternator, AVR, governor, controller, PM schedules.", "ls": ["Genset anatomy: engine, alternator, controls", "Starting systems and battery chargers", "AVR and excitation", "Governors and frequency control", "Weekly, monthly and annual PM", "Load bank testing"]}, {"id": "ups-systems", "t": "UPS Systems", "lv": "intermediate", "cat": "ups", "d": "Online double-conversion UPS: rectifier, inverter, static bypass, batteries, maintenance bypass.", "ls": ["UPS topologies", "Rectifier, inverter and DC bus", "Static and maintenance bypass operations", "UPS alarms and event logs", "UPS battery strings and autonomy"]}, {"id": "ats-fundamentals", "t": "Automatic Transfer Switches", "lv": "intermediate", "cat": "ats", "d": "Open, closed and delayed transition ATS, controllers, timers and testing.", "ls": ["Transfer schemes and transition types", "Voltage/frequency sensing and timers", "ATS testing and exercising", "Common ATS faults"]}, {"id": "motor-maintenance", "t": "Motors and Motor Control", "lv": "intermediate", "cat": "motor", "d": "Induction motors, starters, VFDs, protection and condition monitoring.", "ls": ["Induction motor principles", "DOL, star-delta and soft starters", "VFD basics and fault codes", "Motor insulation and winding tests", "Bearings, alignment and vibration"]}, {"id": "circuit-breakers", "t": "Low-Voltage Circuit Breakers", "lv": "intermediate", "cat": "breaker", "d": "MCB, MCCB, ACB construction, trip units, maintenance and testing.", "ls": ["Breaker types and ratings", "Thermal-magnetic and electronic trip units", "ACB racking and maintenance", "Primary and secondary injection testing"]}, {"id": "fault-finding-methodology", "t": "Systematic Fault Finding", "lv": "advanced", "cat": null, "d": "Structured troubleshooting, half-split method, root cause analysis.", "ls": ["The troubleshooting process", "Using drawings and logic", "Half-split and signal tracing", "Root cause analysis (5 Whys, fishbone)"]}, {"id": "protection-coordination", "t": "Protection & Selectivity", "lv": "advanced", "cat": "switchgear", "d": "Overcurrent, earth fault, discrimination studies and relay settings.", "ls": ["Fault current calculation basics", "Time-current curves and selectivity", "Earth fault protection", "Protection relay testing"]}, {"id": "power-quality", "t": "Power Quality", "lv": "advanced", "cat": null, "d": "Harmonics, sags, swells, transients and their effect on UPS and generators.", "ls": ["Power quality phenomena", "Harmonics and generator sizing", "Power quality analyzers", "Mitigation"]}, {"id": "arc-flash-studies", "t": "Arc Flash Risk Assessment", "lv": "advanced", "cat": null, "d": "Incident energy, arc flash boundaries, labels and energized work permits.", "ls": ["NFPA 70E / IEEE 1584 overview", "Incident energy and boundaries", "Arc flash labels", "Energized work permits"]}, {"id": "critical-power-design", "t": "Critical Power System Design", "lv": "professional", "cat": null, "d": "Tier topologies, redundancy (N+1, 2N), generator and UPS sizing, paralleling.", "ls": ["Redundancy concepts", "Generator paralleling and load sharing", "UPS sizing and redundancy", "Commissioning and integrated systems testing"]}, {"id": "maintenance-management", "t": "Maintenance Strategy & Management", "lv": "professional", "cat": null, "d": "RCM, predictive maintenance, KPIs, spare-parts strategy, compliance.", "ls": ["Preventive vs predictive vs RCM", "Maintenance KPIs (MTBF, MTTR, availability)", "Critical spares strategy", "Audits and standards compliance"]}, {"id": "leading-safe-work", "t": "Leading Safe Electrical Work", "lv": "professional", "cat": null, "d": "Authorizing work, permits, supervising teams, incident investigation.", "ls": ["Roles: authorized, competent and qualified persons", "Permit-to-work systems", "Supervising contractors", "Investigating electrical incidents"]}];
+const PARTS=[{"pn": "CAT-1R-1808", "n": "Engine oil filter", "cat": "generator", "mfr": "Caterpillar", "fits": ["C18"], "price": 38.5, "stock": 12, "min": 4, "lead": 7, "crit": "high"}, {"pn": "CAT-1R-0751", "n": "Fuel filter (secondary)", "cat": "generator", "mfr": "Caterpillar", "fits": ["C18"], "price": 42.0, "stock": 10, "min": 4, "lead": 7, "crit": "high"}, {"pn": "CAT-326-1641", "n": "Primary fuel filter / water separator", "cat": "generator", "mfr": "Caterpillar", "fits": ["C18"], "price": 65.0, "stock": 6, "min": 2, "lead": 10, "crit": "high"}, {"pn": "CUM-LF9009", "n": "Lube oil filter", "cat": "generator", "mfr": "Fleetguard", "fits": ["C550 D5", "QSX15"], "price": 31.0, "stock": 8, "min": 4, "lead": 5, "crit": "high"}, {"pn": "AVR-DSR", "n": "Digital voltage regulator DSR", "cat": "generator", "mfr": "Leroy-Somer", "fits": ["LSA 47.2", "LSA 49.1"], "price": 520.0, "stock": 1, "min": 1, "lead": 21, "crit": "critical"}, {"pn": "GEN-STARTER-24V", "n": "Starter motor 24 V", "cat": "generator", "mfr": "Prestolite", "fits": ["C18", "QSX15"], "price": 890.0, "stock": 1, "min": 1, "lead": 28, "crit": "critical"}, {"pn": "BAT-12V-200AH", "n": "Generator starting battery 12 V 200 Ah", "cat": "generator", "mfr": "Varta", "fits": [], "price": 310.0, "stock": 4, "min": 2, "lead": 7, "crit": "high"}, {"pn": "GEN-BELT-FAN", "n": "Fan / alternator V-belt set", "cat": "generator", "mfr": "Gates", "fits": ["C18"], "price": 74.0, "stock": 3, "min": 2, "lead": 10, "crit": "medium"}, {"pn": "GEN-COOLANT-20L", "n": "Extended life coolant 20 L", "cat": "generator", "mfr": "Caterpillar", "fits": [], "price": 120.0, "stock": 6, "min": 2, "lead": 5, "crit": "medium"}, {"pn": "UPS-FAN-GVX", "n": "UPS power module cooling fan", "cat": "ups", "mfr": "Schneider Electric", "fits": ["Galaxy VX"], "price": 210.0, "stock": 6, "min": 4, "lead": 14, "crit": "high"}, {"pn": "UPS-CAP-DC", "n": "DC bus capacitor kit", "cat": "ups", "mfr": "Schneider Electric", "fits": ["Galaxy VX"], "price": 1450.0, "stock": 1, "min": 1, "lead": 30, "crit": "critical"}, {"pn": "UPS-PM-50", "n": "UPS power module 50 kW", "cat": "ups", "mfr": "Schneider Electric", "fits": ["Galaxy VX"], "price": 9800.0, "stock": 1, "min": 1, "lead": 45, "crit": "critical"}, {"pn": "UPS-FUSE-DC-630", "n": "DC battery fuse 630 A gR", "cat": "ups", "mfr": "Mersen", "fits": [], "price": 185.0, "stock": 3, "min": 3, "lead": 14, "crit": "critical"}, {"pn": "ATS-CTRL-7000", "n": "ATS group 5 controller", "cat": "ats", "mfr": "ASCO", "fits": ["7000 Series"], "price": 2650.0, "stock": 0, "min": 1, "lead": 35, "crit": "critical"}, {"pn": "ATS-MOTOR-OP", "n": "ATS operator motor assembly", "cat": "ats", "mfr": "ASCO", "fits": ["7000 Series"], "price": 1800.0, "stock": 1, "min": 1, "lead": 30, "crit": "high"}, {"pn": "MTR-BRG-6316", "n": "Bearing 6316 C3 (drive end)", "cat": "motor", "mfr": "SKF", "fits": ["M3BP 280"], "price": 145.0, "stock": 2, "min": 2, "lead": 7, "crit": "high"}, {"pn": "MTR-BRG-6316-NDE", "n": "Bearing 6316 C3 (non-drive end)", "cat": "motor", "mfr": "SKF", "fits": ["M3BP 280"], "price": 145.0, "stock": 2, "min": 2, "lead": 7, "crit": "high"}, {"pn": "CTR-AF96", "n": "Contactor AF96 100-250 V AC/DC coil", "cat": "motor", "mfr": "ABB", "fits": [], "price": 380.0, "stock": 2, "min": 1, "lead": 10, "crit": "high"}, {"pn": "OL-EF96", "n": "Electronic overload relay EF96", "cat": "motor", "mfr": "ABB", "fits": [], "price": 260.0, "stock": 1, "min": 1, "lead": 10, "crit": "medium"}, {"pn": "ACB-MCH-MOTOR", "n": "Spring charging motor 220-250 V", "cat": "breaker", "mfr": "Schneider Electric", "fits": ["Masterpact MTZ"], "price": 690.0, "stock": 1, "min": 1, "lead": 21, "crit": "high"}, {"pn": "ACB-MX-SHUNT", "n": "MX shunt trip coil 220-240 V", "cat": "breaker", "mfr": "Schneider Electric", "fits": ["Masterpact MTZ"], "price": 240.0, "stock": 2, "min": 1, "lead": 14, "crit": "critical"}, {"pn": "ACB-XF-CLOSE", "n": "XF closing coil 220-240 V", "cat": "breaker", "mfr": "Schneider Electric", "fits": ["Masterpact MTZ"], "price": 240.0, "stock": 1, "min": 1, "lead": 14, "crit": "high"}, {"pn": "MCCB-NSX250", "n": "MCCB NSX250F 4P with Micrologic 2.2", "cat": "breaker", "mfr": "Schneider Electric", "fits": [], "price": 980.0, "stock": 1, "min": 1, "lead": 14, "crit": "medium"}, {"pn": "BAT-SBS190F", "n": "VRLA monobloc 12 V 190 Ah", "cat": "battery", "mfr": "EnerSys", "fits": ["PowerSafe SBS 190F"], "price": 520.0, "stock": 6, "min": 4, "lead": 28, "crit": "critical"}, {"pn": "BAT-LINK-KIT", "n": "Insulated inter-cell connector kit", "cat": "battery", "mfr": "EnerSys", "fits": ["PowerSafe SBS"], "price": 85.0, "stock": 10, "min": 4, "lead": 14, "crit": "medium"}, {"pn": "BAT-TERM-GREASE", "n": "Terminal anti-corrosion grease", "cat": "battery", "mfr": "NO-OX-ID", "fits": [], "price": 18.0, "stock": 5, "min": 2, "lead": 5, "crit": "low"}];
+const EQUIPMENT=[{"tag": "GEN-01", "n": "Main standby generator 1", "cat": "generator", "mfr": "Caterpillar", "model": "C18 / 600 kVA", "site": "HQ", "loc": "Generator room A", "r": {"kVA": 600, "voltage": "400/230 V", "frequency": "50 Hz", "fuel": "diesel"}}, {"tag": "GEN-02", "n": "Main standby generator 2", "cat": "generator", "mfr": "Cummins", "model": "C550 D5", "site": "HQ", "loc": "Generator room B", "r": {"kVA": 550, "voltage": "400/230 V", "frequency": "50 Hz"}}, {"tag": "UPS-A", "n": "Data center UPS A", "cat": "ups", "mfr": "Schneider Electric", "model": "Galaxy VX 500 kW", "site": "HQ", "loc": "UPS room 1", "r": {"kW": 500, "topology": "online double conversion", "autonomy_min": 10}}, {"tag": "ATS-01", "n": "Main ATS", "cat": "ats", "mfr": "ASCO", "model": "7000 Series 1600 A", "site": "HQ", "loc": "Main switchroom", "r": {"amps": 1600, "poles": 4}}, {"tag": "MTR-CHW-01", "n": "Chilled water pump motor 1", "cat": "motor", "mfr": "ABB", "model": "M3BP 280 75 kW", "site": "HQ", "loc": "Plant room", "r": {"kW": 75, "rpm": 1480}}, {"tag": "ACB-MSB-01", "n": "Main switchboard incomer", "cat": "breaker", "mfr": "Schneider Electric", "model": "Masterpact MTZ2 2500 A", "site": "HQ", "loc": "Main switchroom", "r": {"amps": 2500, "trip_unit": "Micrologic 6.0X"}}, {"tag": "BAT-UPS-A", "n": "UPS A battery string", "cat": "battery", "mfr": "EnerSys", "model": "PowerSafe SBS 190F", "site": "HQ", "loc": "Battery room 1", "r": {"cells": 240, "nominal_v": 480, "Ah": 190}}];
+const I18N={
+en:{
+ tagline:"Maintenance & training",nav_dash:"Dashboard",nav_chat:"AI Assistant",nav_train:"Training Center",nav_exam:"Assessment",nav_sim:"Fault Simulator",nav_rep:"Maintenance Reports",nav_parts:"Spare Parts",nav_kb:"Knowledge Base",nav_admin:"Admin",
+ language:"Language",
+ hello:"Hello",dash_sub:"Your training progress, team reports and stock alerts at a glance.",
+ level:"Level",xp:"XP",next_level:"to next level",lessons_done:"Lessons completed",certs:"Certificates",open_reports:"Open reports",low_stock:"Low-stock parts",
+ continue_learning:"Continue learning",start:"Start",quick_actions:"Quick actions",qa_ask:"Ask a question",qa_sim:"Run a fault simulation",qa_rep:"Write a report",qa_parts:"Find a spare part",
+ rule_day:"Safety rule of the day",recent_reports:"Recent reports",none_yet:"Nothing here yet.",
+ lv_beginner:"Beginner",lv_intermediate:"Intermediate",lv_advanced:"Advanced",lv_professional:"Professional",
+ chat_sub:"Ask about maintenance, faults, procedures and safety. Answers draw on the Knowledge Base and cite their sources.",
+ mode_general:"General",mode_trouble:"Troubleshoot",mode_safety:"Safety brief",mode_trainee:"Explain simply",
+ placeholder:"Describe the equipment and the problem, e.g. 'Generator 600 kVA trips on overspeed during load test'",
+ send:"Send",stop:"Stop",speak:"Read aloud",copy:"Copy",copied:"Copied",new_chat:"New chat",voice:"Voice input",
+ sources:"Sources",safety_banner:"Verify isolation before any hands-on work: lock out, tag out, test before touch. Follow site rules and the manufacturer's manual.",
+ suggest1:"UPS is on bypass with a 'DC bus overvoltage' alarm. What should I check?",suggest2:"Weekly checklist for a 600 kVA diesel generator",suggest3:"How do I measure motor insulation resistance safely?",suggest4:"ATS will not transfer back to utility after an outage",
+ train_sub:"A path from Beginner to Professional. Lessons are written for you on first open and saved for the team.",
+ my_plan:"My learning plan",make_plan:"Create my plan",plan_goal:"Your goal (optional)",plan_goal_ph:"e.g. become the UPS lead for our site within 6 months",
+ lessons:"lessons",back:"Back",mark_done:"Mark lesson complete",done:"Completed",writing_lesson:"Writing the lesson…",regenerate:"Rewrite",take_quiz:"Take the quiz",
+ exam_sub:"Practice with quizzes, then sit the certification exam. Score 80% or more to earn a certificate.",
+ topic:"Course",quiz:"Practice quiz",exam:"Certification exam",q5:"5 questions",q10:"10 questions, pass mark 80%",generate:"Generate",generating:"Preparing questions…",
+ submit:"Submit answers",score:"Score",passed:"Passed",failed:"Not passed",try_again:"Try again",cert_earned:"Certificate earned",download_pdf:"Download PDF",my_certs:"My certificates",history:"Recent attempts",answer_all:"Answer every question first.",
+ cert_title:"Certificate of Competence",cert_line:"has demonstrated competence in",cert_code:"Certificate no.",
+ sim_sub:"Diagnose a realistic fault. Take readings, follow safe procedure, then submit your diagnosis for scoring.",
+ equipment:"Equipment",difficulty:"Difficulty",start_sim:"Start scenario",building_sim:"Setting up the scenario…",
+ symptoms:"Reported symptoms",readings:"Readings",alarms:"Active alarms",action_ph:"What do you do next? e.g. 'Apply LOTO on the incoming breaker' or 'Measure DC bus voltage'",
+ do_it:"Do it",diagnose:"Submit diagnosis",diag_ph:"Root cause and the repair you would carry out",your_diag:"Your diagnosis",result:"Result",ideal_path:"Expert approach",safety_flags:"Safety notes",new_sim:"New scenario",reveal:"The fault was",steps:"Steps",
+ qa_alarms:"Check the alarm log",qa_visual:"Visual inspection",qa_loto:"Apply lockout/tagout",qa_measure:"Measure voltages",
+ rep_sub:"Create maintenance reports for the team. Write rough notes and let the assistant draft the report for you.",
+ new_report:"New report",notes:"Field notes",notes_ph:"Rough notes, e.g. 'GEN-01 monthly PM. oil level ok, coolant topped 2L, batt 25.6V, fuel filter changed, run 30 min loaded 40%, no alarms'",draft:"Draft from notes",drafting:"Drafting…",
+ title:"Title",rtype:"Type",t_preventive:"Preventive",t_corrective:"Corrective",t_inspection:"Inspection",t_emergency:"Emergency",
+ date:"Date",site:"Site",findings:"Findings",actions:"Actions taken",measurements:"Measurements",parts_used:"Parts used",recommendations:"Recommendations",safety_notes:"Safety notes",status:"Status",st_open:"Open",st_closed:"Closed",
+ save:"Save report",saved:"Saved",cancel:"Cancel",all:"All",by:"By",delete:"Delete",confirm_delete:"Delete for good?",yes:"Yes, delete",
+ parts_sub:"Search the spare-parts catalogue or describe a fault to get recommended parts.",
+ advisor:"Parts advisor",advisor_ph:"Symptom or task, e.g. 'Annual PM on GEN-01' or 'UPS battery string autonomy dropped to 4 minutes'",recommend:"Recommend parts",
+ catalogue:"Catalogue",search:"Search",pn:"Part no.",part:"Part",fits:"Fits",stock:"Stock",lead:"Lead time",price:"Unit price",crit:"Criticality",days:"days",low:"Low",in_stock:"In stock",out:"Out",qty:"Qty",why:"Why",also:"Also consider (not in catalogue)",
+ kb_sub:"Manuals, SOPs and PDFs the team can search. The AI Assistant reads them when it answers.",
+ upload:"Add documents",drop:"Drop PDF, TXT or Markdown files here, or click to choose",reading_file:"Reading",uploading:"Saving",kb_docs:"Documents",builtin:"Built-in SOP",uploaded:"Uploaded",chunks:"sections",
+ kb_search_ph:"Search procedures, alarms, part numbers…",results:"Results",ask_ai:"Ask the assistant",no_results:"No matches. Try fewer or different words.",open:"Open",close:"Close",viewer_only:"You can read the library. Ask an editor for access to add documents.",
+ admin_sub:"Team progress, report activity, stock alerts and library management.",admin_only:"This page is for artifact editors.",
+ team:"Team progress",person:"Person",last_active:"Last active",reports_total:"Reports",kb_manage:"Library",stock_alerts:"Stock alerts",
+ ai_off:"AI features work when this page is opened in Claude. Training content, catalogue and library search still work.",
+ data_off:"Sign in to Claude to save progress and share reports with your team.",
+ dl_off:"File downloads aren't available in this view.",arabic_pdf:"Arabic text can't be drawn in the PDF. Downloaded as a text file instead.",
+ err:"Something went wrong",limited:"The assistant is busy. Wait a minute and try again.",
+ cat_generator:"Generator",cat_ups:"UPS",cat_ats:"ATS",cat_motor:"Motor",cat_breaker:"Breaker",cat_battery:"Battery",cat_switchgear:"Switchgear",cat_general:"General",
+ d_easy:"Easy",d_medium:"Medium",d_hard:"Hard",
+ rules:["Treat every conductor as live until you have proved it dead with a tested voltage detector.","Lock out and tag out every energy source, including back-feed from generators, UPS and capacitors.","Wear arc-rated PPE matched to the incident energy on the equipment label.","Check your tester on a known live source before and after testing (live-dead-live).","Never defeat an interlock or work alone on energised equipment.","Battery rooms: no sparks, eye-wash ready, insulated tools only."]
+},
+fr:{
+ tagline:"Maintenance et formation",nav_dash:"Tableau de bord",nav_chat:"Assistant IA",nav_train:"Centre de formation",nav_exam:"Évaluation",nav_sim:"Simulateur de pannes",nav_rep:"Rapports de maintenance",nav_parts:"Pièces de rechange",nav_kb:"Base documentaire",nav_admin:"Administration",
+ language:"Langue",
+ hello:"Bonjour",dash_sub:"Votre progression, les rapports de l'équipe et les alertes de stock en un coup d'œil.",
+ level:"Niveau",xp:"XP",next_level:"avant le niveau suivant",lessons_done:"Leçons terminées",certs:"Certificats",open_reports:"Rapports ouverts",low_stock:"Pièces en stock bas",
+ continue_learning:"Reprendre la formation",start:"Commencer",quick_actions:"Actions rapides",qa_ask:"Poser une question",qa_sim:"Lancer une simulation",qa_rep:"Rédiger un rapport",qa_parts:"Trouver une pièce",
+ rule_day:"Règle de sécurité du jour",recent_reports:"Rapports récents",none_yet:"Rien pour l'instant.",
+ lv_beginner:"Débutant",lv_intermediate:"Intermédiaire",lv_advanced:"Avancé",lv_professional:"Professionnel",
+ chat_sub:"Questions de maintenance, pannes, procédures et sécurité. Les réponses s'appuient sur la base documentaire et citent leurs sources.",
+ mode_general:"Général",mode_trouble:"Dépannage",mode_safety:"Consigne sécurité",mode_trainee:"Expliquer simplement",
+ placeholder:"Décrivez l'équipement et le problème, ex. « Groupe 600 kVA se déclenche en survitesse pendant l'essai en charge »",
+ send:"Envoyer",stop:"Arrêter",speak:"Lire à voix haute",copy:"Copier",copied:"Copié",new_chat:"Nouvelle conversation",voice:"Saisie vocale",
+ sources:"Sources",safety_banner:"Vérifiez la consignation avant toute intervention : consigner, étiqueter, vérifier l'absence de tension. Respectez les règles du site et le manuel du fabricant.",
+ suggest1:"L'onduleur est sur bypass avec l'alarme « surtension bus DC ». Que vérifier ?",suggest2:"Check-list hebdomadaire d'un groupe diesel 600 kVA",suggest3:"Comment mesurer l'isolement d'un moteur en sécurité ?",suggest4:"L'inverseur ne revient pas sur le réseau après une coupure",
+ train_sub:"Un parcours de Débutant à Professionnel. Les leçons sont rédigées à la première ouverture puis enregistrées pour l'équipe.",
+ my_plan:"Mon plan de formation",make_plan:"Créer mon plan",plan_goal:"Votre objectif (facultatif)",plan_goal_ph:"ex. devenir référent onduleurs du site d'ici 6 mois",
+ lessons:"leçons",back:"Retour",mark_done:"Marquer comme terminée",done:"Terminée",writing_lesson:"Rédaction de la leçon…",regenerate:"Réécrire",take_quiz:"Passer le quiz",
+ exam_sub:"Entraînez-vous avec des quiz, puis passez l'examen de certification. 80 % minimum pour obtenir un certificat.",
+ topic:"Cours",quiz:"Quiz d'entraînement",exam:"Examen de certification",q5:"5 questions",q10:"10 questions, seuil 80 %",generate:"Générer",generating:"Préparation des questions…",
+ submit:"Valider les réponses",score:"Score",passed:"Réussi",failed:"Non réussi",try_again:"Réessayer",cert_earned:"Certificat obtenu",download_pdf:"Télécharger le PDF",my_certs:"Mes certificats",history:"Tentatives récentes",answer_all:"Répondez d'abord à toutes les questions.",
+ cert_title:"Certificat de compétence",cert_line:"a démontré sa compétence en",cert_code:"Certificat n°",
+ sim_sub:"Diagnostiquez une panne réaliste. Prenez des mesures, suivez une procédure sûre, puis soumettez votre diagnostic.",
+ equipment:"Équipement",difficulty:"Difficulté",start_sim:"Démarrer le scénario",building_sim:"Préparation du scénario…",
+ symptoms:"Symptômes signalés",readings:"Mesures",alarms:"Alarmes actives",action_ph:"Que faites-vous ? ex. « Consigner le disjoncteur d'arrivée » ou « Mesurer la tension du bus DC »",
+ do_it:"Exécuter",diagnose:"Soumettre le diagnostic",diag_ph:"Cause racine et réparation que vous effectueriez",your_diag:"Votre diagnostic",result:"Résultat",ideal_path:"Démarche experte",safety_flags:"Remarques sécurité",new_sim:"Nouveau scénario",reveal:"La panne était",steps:"Étapes",
+ qa_alarms:"Consulter le journal d'alarmes",qa_visual:"Inspection visuelle",qa_loto:"Consigner l'équipement",qa_measure:"Mesurer les tensions",
+ rep_sub:"Créez des rapports de maintenance partagés. Notez vos observations brutes et l'assistant rédige le rapport.",
+ new_report:"Nouveau rapport",notes:"Notes de terrain",notes_ph:"Notes brutes, ex. « GEN-01 maintenance mensuelle. niveau huile ok, liquide refroidissement +2 L, batterie 25,6 V, filtre gasoil changé, essai 30 min à 40 %, aucune alarme »",draft:"Rédiger depuis les notes",drafting:"Rédaction…",
+ title:"Titre",rtype:"Type",t_preventive:"Préventive",t_corrective:"Corrective",t_inspection:"Inspection",t_emergency:"Urgence",
+ date:"Date",site:"Site",findings:"Constats",actions:"Actions réalisées",measurements:"Mesures",parts_used:"Pièces utilisées",recommendations:"Recommandations",safety_notes:"Remarques sécurité",status:"Statut",st_open:"Ouvert",st_closed:"Clôturé",
+ save:"Enregistrer",saved:"Enregistré",cancel:"Annuler",all:"Tous",by:"Par",delete:"Supprimer",confirm_delete:"Supprimer définitivement ?",yes:"Oui, supprimer",
+ parts_sub:"Recherchez dans le catalogue ou décrivez une panne pour obtenir les pièces recommandées.",
+ advisor:"Conseiller pièces",advisor_ph:"Symptôme ou tâche, ex. « Maintenance annuelle GEN-01 » ou « autonomie batterie onduleur tombée à 4 minutes »",recommend:"Recommander",
+ catalogue:"Catalogue",search:"Rechercher",pn:"Référence",part:"Pièce",fits:"Compatible",stock:"Stock",lead:"Délai",price:"Prix unitaire",crit:"Criticité",days:"jours",low:"Bas",in_stock:"En stock",out:"Épuisé",qty:"Qté",why:"Pourquoi",also:"À envisager aussi (hors catalogue)",
+ kb_sub:"Manuels, procédures et PDF consultables par l'équipe. L'assistant IA les lit pour répondre.",
+ upload:"Ajouter des documents",drop:"Déposez des fichiers PDF, TXT ou Markdown ici, ou cliquez pour choisir",reading_file:"Lecture",uploading:"Enregistrement",kb_docs:"Documents",builtin:"Procédure intégrée",uploaded:"Ajouté",chunks:"sections",
+ kb_search_ph:"Rechercher procédures, alarmes, références…",results:"Résultats",ask_ai:"Demander à l'assistant",no_results:"Aucun résultat. Essayez d'autres mots.",open:"Ouvrir",close:"Fermer",viewer_only:"Vous pouvez consulter la bibliothèque. Demandez un accès éditeur pour ajouter des documents.",
+ admin_sub:"Progression de l'équipe, activité des rapports, alertes de stock et gestion de la bibliothèque.",admin_only:"Cette page est réservée aux éditeurs.",
+ team:"Progression de l'équipe",person:"Personne",last_active:"Dernière activité",reports_total:"Rapports",kb_manage:"Bibliothèque",stock_alerts:"Alertes de stock",
+ ai_off:"Les fonctions IA marchent quand la page est ouverte dans Claude. Le catalogue, les cours et la recherche documentaire restent disponibles.",
+ data_off:"Connectez-vous à Claude pour enregistrer votre progression et partager les rapports.",
+ dl_off:"Le téléchargement n'est pas disponible dans cette vue.",arabic_pdf:"Le texte arabe ne peut pas être tracé dans le PDF. Téléchargé en fichier texte.",
+ err:"Une erreur s'est produite",limited:"L'assistant est occupé. Réessayez dans une minute.",
+ cat_generator:"Groupe électrogène",cat_ups:"Onduleur",cat_ats:"Inverseur (ATS)",cat_motor:"Moteur",cat_breaker:"Disjoncteur",cat_battery:"Batterie",cat_switchgear:"Appareillage",cat_general:"Général",
+ d_easy:"Facile",d_medium:"Moyen",d_hard:"Difficile",
+ rules:["Considérez tout conducteur comme sous tension tant que l'absence de tension n'est pas vérifiée avec un détecteur testé.","Consignez et étiquetez toutes les sources d'énergie, y compris les réalimentations par groupe, onduleur et condensateurs.","Portez des EPI résistants à l'arc adaptés à l'énergie incidente indiquée sur l'étiquette.","Testez votre détecteur sur une source connue avant et après la mesure.","Ne neutralisez jamais un verrouillage et ne travaillez jamais seul sous tension.","Salle batteries : aucune étincelle, rince-œil prêt, outils isolés uniquement."]
+},
+ar:{
+ tagline:"الصيانة والتدريب",nav_dash:"لوحة التحكم",nav_chat:"المساعد الذكي",nav_train:"مركز التدريب",nav_exam:"التقييم والشهادات",nav_sim:"محاكي الأعطال",nav_rep:"تقارير الصيانة",nav_parts:"قطع الغيار",nav_kb:"قاعدة المعرفة",nav_admin:"الإدارة",
+ language:"اللغة",
+ hello:"مرحباً",dash_sub:"تقدّمك في التدريب وتقارير الفريق وتنبيهات المخزون في مكان واحد.",
+ level:"المستوى",xp:"نقاط",next_level:"للمستوى التالي",lessons_done:"الدروس المكتملة",certs:"الشهادات",open_reports:"تقارير مفتوحة",low_stock:"قطع منخفضة المخزون",
+ continue_learning:"تابع التعلّم",start:"ابدأ",quick_actions:"إجراءات سريعة",qa_ask:"اطرح سؤالاً",qa_sim:"شغّل محاكاة عطل",qa_rep:"اكتب تقريراً",qa_parts:"ابحث عن قطعة",
+ rule_day:"قاعدة السلامة لليوم",recent_reports:"أحدث التقارير",none_yet:"لا شيء بعد.",
+ lv_beginner:"مبتدئ",lv_intermediate:"متوسط",lv_advanced:"متقدم",lv_professional:"محترف",
+ chat_sub:"اسأل عن الصيانة والأعطال والإجراءات والسلامة. تعتمد الإجابات على قاعدة المعرفة وتذكر مصادرها.",
+ mode_general:"عام",mode_trouble:"تشخيص الأعطال",mode_safety:"إرشادات السلامة",mode_trainee:"شرح مبسّط",
+ placeholder:"صف الجهاز والمشكلة، مثلاً: مولد 600 كيلوفولت أمبير يفصل بسبب زيادة السرعة أثناء اختبار الحمل",
+ send:"إرسال",stop:"إيقاف",speak:"قراءة بصوت",copy:"نسخ",copied:"تم النسخ",new_chat:"محادثة جديدة",voice:"إدخال صوتي",
+ sources:"المصادر",safety_banner:"تحقّق من العزل قبل أي عمل يدوي: اقفل، ضع البطاقة، واختبر قبل اللمس. اتبع قواعد الموقع ودليل الشركة المصنّعة.",
+ suggest1:"جهاز UPS على وضع التجاوز مع إنذار «جهد زائد في ناقل التيار المستمر». ماذا أفحص؟",suggest2:"قائمة فحص أسبوعية لمولد ديزل 600 كيلوفولت أمبير",suggest3:"كيف أقيس مقاومة عزل المحرك بأمان؟",suggest4:"مفتاح التحويل الآلي لا يعود إلى الشبكة بعد انقطاع",
+ train_sub:"مسار من مبتدئ إلى محترف. تُكتب الدروس عند فتحها أول مرة وتُحفظ للفريق.",
+ my_plan:"خطة تعلّمي",make_plan:"أنشئ خطتي",plan_goal:"هدفك (اختياري)",plan_goal_ph:"مثلاً: أن أصبح مسؤول أنظمة UPS في الموقع خلال 6 أشهر",
+ lessons:"دروس",back:"رجوع",mark_done:"تحديد الدرس كمكتمل",done:"مكتمل",writing_lesson:"جارٍ كتابة الدرس…",regenerate:"إعادة الكتابة",take_quiz:"ابدأ الاختبار",
+ exam_sub:"تدرّب بالاختبارات القصيرة ثم تقدّم لامتحان الشهادة. تحتاج 80٪ أو أكثر للحصول على شهادة.",
+ topic:"الدورة",quiz:"اختبار تدريبي",exam:"امتحان الشهادة",q5:"5 أسئلة",q10:"10 أسئلة، النجاح 80٪",generate:"إنشاء",generating:"جارٍ تحضير الأسئلة…",
+ submit:"إرسال الإجابات",score:"النتيجة",passed:"ناجح",failed:"لم ينجح",try_again:"حاول مجدداً",cert_earned:"حصلت على شهادة",download_pdf:"تنزيل PDF",my_certs:"شهاداتي",history:"المحاولات الأخيرة",answer_all:"أجب عن جميع الأسئلة أولاً.",
+ cert_title:"شهادة كفاءة",cert_line:"أثبت كفاءته في",cert_code:"رقم الشهادة",
+ sim_sub:"شخّص عطلاً واقعياً. خذ القراءات واتبع إجراءات آمنة ثم أرسل تشخيصك للتقييم.",
+ equipment:"الجهاز",difficulty:"الصعوبة",start_sim:"ابدأ السيناريو",building_sim:"جارٍ إعداد السيناريو…",
+ symptoms:"الأعراض المبلّغ عنها",readings:"القراءات",alarms:"الإنذارات النشطة",action_ph:"ما خطوتك التالية؟ مثلاً: عزل وقفل قاطع التغذية، أو قياس جهد ناقل التيار المستمر",
+ do_it:"نفّذ",diagnose:"إرسال التشخيص",diag_ph:"السبب الجذري والإصلاح الذي ستنفّذه",your_diag:"تشخيصك",result:"النتيجة",ideal_path:"نهج الخبير",safety_flags:"ملاحظات السلامة",new_sim:"سيناريو جديد",reveal:"العطل كان",steps:"الخطوات",
+ qa_alarms:"افحص سجل الإنذارات",qa_visual:"فحص بصري",qa_loto:"طبّق القفل والبطاقة",qa_measure:"قِس الجهود",
+ rep_sub:"أنشئ تقارير صيانة مشتركة مع الفريق. اكتب ملاحظاتك الأولية ودع المساعد يصيغ التقرير.",
+ new_report:"تقرير جديد",notes:"ملاحظات ميدانية",notes_ph:"ملاحظات أولية، مثلاً: GEN-01 صيانة شهرية، مستوى الزيت جيد، إضافة 2 لتر مبرد، البطارية 25.6 فولت، تغيير فلتر الوقود، تشغيل 30 دقيقة بحمل 40٪، لا إنذارات",draft:"صياغة من الملاحظات",drafting:"جارٍ الصياغة…",
+ title:"العنوان",rtype:"النوع",t_preventive:"وقائية",t_corrective:"تصحيحية",t_inspection:"فحص",t_emergency:"طارئة",
+ date:"التاريخ",site:"الموقع",findings:"الملاحظات",actions:"الإجراءات المتخذة",measurements:"القياسات",parts_used:"القطع المستخدمة",recommendations:"التوصيات",safety_notes:"ملاحظات السلامة",status:"الحالة",st_open:"مفتوح",st_closed:"مغلق",
+ save:"حفظ التقرير",saved:"تم الحفظ",cancel:"إلغاء",all:"الكل",by:"بواسطة",delete:"حذف",confirm_delete:"حذف نهائياً؟",yes:"نعم، احذف",
+ parts_sub:"ابحث في كتالوج قطع الغيار أو صف عطلاً للحصول على القطع الموصى بها.",
+ advisor:"مستشار القطع",advisor_ph:"العَرَض أو المهمة، مثلاً: الصيانة السنوية لـ GEN-01 أو انخفاض زمن تشغيل بطاريات UPS إلى 4 دقائق",recommend:"اقترح القطع",
+ catalogue:"الكتالوج",search:"بحث",pn:"رقم القطعة",part:"القطعة",fits:"متوافقة مع",stock:"المخزون",lead:"مدة التوريد",price:"سعر الوحدة",crit:"الأهمية",days:"يوم",low:"منخفض",in_stock:"متوفر",out:"نفد",qty:"الكمية",why:"السبب",also:"يُنصح أيضاً (خارج الكتالوج)",
+ kb_sub:"أدلة وإجراءات تشغيل وملفات PDF يمكن للفريق البحث فيها. يقرؤها المساعد الذكي عند الإجابة.",
+ upload:"إضافة مستندات",drop:"اسحب ملفات PDF أو TXT أو Markdown هنا، أو انقر للاختيار",reading_file:"جارٍ القراءة",uploading:"جارٍ الحفظ",kb_docs:"المستندات",builtin:"إجراء مدمج",uploaded:"مرفوع",chunks:"أقسام",
+ kb_search_ph:"ابحث عن إجراءات أو إنذارات أو أرقام قطع…",results:"النتائج",ask_ai:"اسأل المساعد",no_results:"لا نتائج. جرّب كلمات أقل أو مختلفة.",open:"فتح",close:"إغلاق",viewer_only:"يمكنك قراءة المكتبة. اطلب صلاحية التحرير لإضافة مستندات.",
+ admin_sub:"تقدّم الفريق ونشاط التقارير وتنبيهات المخزون وإدارة المكتبة.",admin_only:"هذه الصفحة لمحرّري التطبيق.",
+ team:"تقدّم الفريق",person:"الشخص",last_active:"آخر نشاط",reports_total:"التقارير",kb_manage:"المكتبة",stock_alerts:"تنبيهات المخزون",
+ ai_off:"تعمل ميزات الذكاء الاصطناعي عند فتح الصفحة داخل Claude. الكتالوج والدورات والبحث في المكتبة متاحة دائماً.",
+ data_off:"سجّل الدخول إلى Claude لحفظ تقدّمك ومشاركة التقارير مع فريقك.",
+ dl_off:"تنزيل الملفات غير متاح في هذا العرض.",arabic_pdf:"لا يمكن رسم النص العربي في ملف PDF، لذلك نُزّل كملف نصي.",
+ err:"حدث خطأ",limited:"المساعد مشغول. انتظر دقيقة وحاول مجدداً.",
+ cat_generator:"مولد",cat_ups:"UPS",cat_ats:"مفتاح تحويل آلي",cat_motor:"محرك",cat_breaker:"قاطع",cat_battery:"بطارية",cat_switchgear:"لوحات توزيع",cat_general:"عام",
+ d_easy:"سهل",d_medium:"متوسط",d_hard:"صعب",
+ rules:["اعتبر كل موصل مكهرباً حتى تثبت خلوّه من الجهد بكاشف مُختبَر.","اقفل وضع بطاقة على كل مصدر طاقة، بما في ذلك التغذية العكسية من المولدات وأجهزة UPS والمكثفات.","ارتدِ معدات وقاية مقاومة للقوس الكهربائي تناسب الطاقة المذكورة على ملصق الجهاز.","اختبر جهاز القياس على مصدر حيّ معروف قبل القياس وبعده.","لا تعطّل أي قفل أمان ولا تعمل وحدك على معدات مكهربة.","غرف البطاريات: لا شرر، غسول العين جاهز، أدوات معزولة فقط."]
+}};
+const KB_BUILTIN=[
+{id:"sop-loto",title:"SOP-01 Lockout/Tagout (LOTO) for electrical equipment",text:`Purpose: isolate all hazardous energy before maintenance on electrical equipment.
+1. Prepare: identify every energy source using the single-line diagram, including utility supply, generator, UPS output, DC batteries, capacitors, back-feed from parallel sources and control power.
+2. Notify affected people and the control room. Obtain the permit to work.
+3. Shut down the equipment using normal stopping procedures.
+4. Isolate: open the isolating devices (breakers, switches, fuses). For draw-out breakers, rack to the disconnected or withdrawn position.
+5. Lock and tag: each worker applies a personal lock and a tag with name, date and reason. Use a multi-lock hasp for group isolation.
+6. Release stored energy: discharge capacitors (wait the time on the label, typically 5 minutes for UPS DC capacitors), block mechanical parts, isolate battery strings at the DC breaker.
+7. Verify absence of voltage: wear PPE for the arc flash category. Test the voltage detector on a known live source, test all phases phase-to-phase and phase-to-earth, then retest the detector (live-dead-live).
+8. Apply temporary earthing where required by site rules.
+9. Restoration: remove tools and earths, check all workers are clear, each worker removes their own lock, notify affected people, re-energise in the planned sequence.
+Never remove another person's lock. A lock may only be removed by its owner or under the site's documented lock-removal procedure.`},
+{id:"sop-gen-pm",title:"SOP-02 Standby diesel generator weekly, monthly and annual maintenance",text:`Weekly (no-load or with ATS test): check engine oil level, coolant level, fuel day tank level, battery charger output (typically 27.2 V float for a 24 V lead-acid system), battery terminals for corrosion, air filter restriction indicator, leaks of oil, fuel or coolant, block heater operation (block temperature 30-40 C), controller alarms and event log. Run for 15-30 minutes. Record oil pressure, coolant temperature, voltage (all phases), frequency (50 Hz +/-0.5) and hours.
+Monthly: run on load for at least 30 minutes at 30% or more of rated load to avoid wet stacking. Check belt tension, radiator fins, exhaust for leaks and excessive smoke, drain water from fuel water separator, check fuel quality, check battery specific gravity or voltage per cell (2.12-2.14 V per cell rested for flooded lead-acid).
+Every 250 hours or 6 months: change engine oil and oil filter, change fuel filters (primary water separator and secondary), check coolant additive concentration.
+Annual: load bank test for 2-4 hours at stepped loads up to 100% rated kW, change air filter, coolant test, inspect alternator windings and connections, insulation resistance test of alternator (minimum 1 megohm plus 1 megohm per kV, polarisation index above 2 preferred), check AVR settings, governor response, protection relay trip tests, torque check of power terminations with thermography under load.
+Common faults: fails to start (battery voltage below 24 V while cranking under 18 V, starter solenoid, fuel solenoid, air in fuel), shutdown on low oil pressure, high coolant temperature (radiator blocked, thermostat, fan belt), overspeed (governor actuator, sticking fuel rack), under-voltage (AVR, sensing fuse, excitation diodes), over-voltage on load rejection.`},
+{id:"sop-ups-batt",title:"SOP-03 UPS battery inspection, testing and replacement",text:`Applies to VRLA battery strings on online double-conversion UPS.
+Safety: DC strings can exceed 400 V DC and cannot be switched off at the cells. Use insulated tools, face shield, rubber gloves class 0 minimum, remove metal jewellery, keep eye-wash available. Open the battery breaker and verify zero current before touching links.
+Quarterly: visual inspection for swelling, cracks, leakage and terminal corrosion. Measure string float voltage (typically 2.25-2.27 V per cell at 20-25 C), individual block voltages (flag blocks deviating more than 0.05 V per cell from average), ambient temperature (every 10 C above 25 C halves VRLA life), and ripple current.
+Semi-annual: measure internal resistance or impedance of each block. A block 25% above its baseline is suspect, 50% above is failed.
+Annual: torque check of inter-cell connections to the manufacturer's value, thermography, discharge test at the UPS load or with a DC load bank to verify autonomy. Replace the string when capacity is below 80%.
+Replacement: put the UPS on maintenance bypass per the manufacturer's procedure, open the battery breaker, replace blocks of the same type and date code, never mix old and new blocks in one string, check polarity, measure total string voltage before closing the breaker, then return the UPS to normal mode and record the autonomy.
+Typical alarms: battery discharged, battery test failed, DC bus overvoltage (rectifier fault or charger setting), DC ground fault, battery temperature high.`},
+{id:"sop-ats",title:"SOP-04 Automatic transfer switch (ATS) monthly test and troubleshooting",text:`Monthly test: notify users and the control room. Confirm the generator is in AUTO and the controller has no alarms. Initiate a test transfer from the ATS controller (simulated utility failure) rather than opening the utility breaker where possible. Record: engine start delay (typically 2-3 s), time to transfer (generator stable at rated voltage and frequency, normally under 10 s for emergency loads), load on generator, retransfer delay (commonly 5-30 minutes), cooldown time (commonly 5 minutes). Check for clean transfer without arcing noise or relay chatter.
+Annual: with the ATS isolated and locked out, inspect main contacts for pitting, arc chutes, mechanism lubrication, control wiring, torque terminations, thermography under load before shutdown.
+Troubleshooting: ATS will not retransfer to utility - check utility voltage and frequency are within the pickup setting on all three phases, phase rotation correct, retransfer timer running, controller inhibit or test switch left on, utility sensing fuse blown, motor operator or solenoid fault. ATS will not transfer to generator - generator voltage or frequency outside pickup, generator breaker open, controller not receiving start signal, transfer inhibit active. Repeated transfers - utility voltage unstable, dropout and pickup settings too close.`},
+{id:"sop-motor-ir",title:"SOP-05 Motor insulation resistance (megger) testing",text:`Purpose: assess winding insulation of LV motors (up to 1000 V).
+1. Isolate and lock out the motor starter or VFD. Prove dead at the motor terminals. Disconnect the motor cables from the VFD output (a megger test can destroy VFD semiconductors).
+2. Clean the terminal box. Record ambient temperature and humidity.
+3. Select test voltage: 500 V DC for motors rated up to 400 V, 1000 V DC for motors 400-1000 V.
+4. Test each phase to earth and phase to phase where windings can be separated. Apply for 1 minute and record the reading. For the polarisation index, record at 1 minute and 10 minutes.
+5. Acceptance (IEEE 43 guidance): minimum 5 megohm for random-wound motors at 40 C corrected; readings above 100 megohm are typically good. Correct readings to 40 C (halve the value for every 10 C above, double for every 10 C below). PI below 1 is poor, 1-2 questionable, above 2 good.
+6. Discharge the winding after each test for at least four times the test duration, or use the instrument's auto-discharge.
+7. Measure winding resistance with a micro-ohmmeter: phase imbalance above 2% indicates shorted turns or loose connections.
+Low readings: moisture (dry with space heaters or low-voltage current and retest), contamination, damaged leads, winding breakdown.`},
+{id:"sop-acb",title:"SOP-06 Low-voltage air circuit breaker (ACB) maintenance",text:`Frequency: annually, or after a fault interruption near the rated breaking capacity.
+1. Open the breaker, rack it to the disconnected position, lock out and verify dead on line and load side. Withdraw it to the maintenance position using the lifting device.
+2. Inspect arc chutes for cracking and contamination, main contacts for erosion (replace when contact wear indicator reaches limit), clean with dry lint-free cloth, do not file silver contacts.
+3. Lubricate the mechanism with the manufacturer's grease only. Operate mechanically 5-10 times. Check closing and opening springs, anti-pumping, shunt trip and undervoltage release operation.
+4. Measure contact resistance with a 100 A DC micro-ohmmeter; compare phases and with the previous record. More than 50% increase indicates contact problems.
+5. Insulation resistance test at 1000 V DC between phases and phase to earth with the breaker closed, and across open contacts.
+6. Test the electronic trip unit with the secondary injection kit: long time, short time, instantaneous and earth fault pick-ups and delays per the selectivity study settings. Record settings before and after.
+7. Rack in, close, check auxiliary contacts and remote indication, and carry out thermography on load.
+Common faults: breaker will not close (springs not charged, UV release not energised, mechanical interlock, trip unit fault signal), nuisance tripping (wrong settings, earth fault from load, CT wiring).`}
+];
+/* ---------- basics ---------- */
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const store={get(k,d){try{const v=localStorage.getItem("ea:"+k);return v==null?d:JSON.parse(v)}catch{return d}},set(k,v){try{localStorage.setItem("ea:"+k,JSON.stringify(v))}catch{}}};
+const LANGNAME={en:"English",fr:"French",ar:"Arabic"};
+const SPEECH={en:"en-US",fr:"fr-FR",ar:"ar-SA"};
+const CATS=["generator","ups","ats","motor","breaker","battery"];
+const LEVELS=["beginner","intermediate","advanced","professional"];
+const XP_AT=[0,200,600,1200];
+const S={lang:store.get("lang","en"),view:"dash",uid:null,name:"",isAdmin:false,canWrite:false,
+  st:{xp:0,progress:{},certs:[],attempts:[],sims:[],plan:null},
+  reports:[],kb:[],chunks:null,team:[],chat:[],mode:"general",
+  course:null,lesson:null,quiz:null,sim:null,editing:null,repFilter:"all",partsQ:"",partsCat:"all",advice:null,kbQ:""};
+let sample=null,db=null,user=null,downloads=null;S.email="";
+const t=k=>(I18N[S.lang]&&I18N[S.lang][k])??I18N.en[k]??k;
+const catName=c=>t("cat_"+(c||"general"));
+function toast(msg){const d=document.createElement("div");d.className="toast";d.setAttribute("role","status");d.textContent=msg;document.body.appendChild(d);setTimeout(()=>d.remove(),3600)}
+function errMsg(e){if(e&&e.code==="rate_limited")return t("limited");if(e&&e.code==="not_granted")return t("ai_off");return t("err")+(e&&e.message?": "+e.message:"")}
+function md(s){try{return DOMPurify.sanitize(marked.parse(String(s||"")))}catch{return "<p>"+esc(s).replace(/\n/g,"<br>")+"</p>"}}
+const fmtDate=ts=>{try{return new Date(ts).toLocaleDateString(S.lang==="ar"?"ar":S.lang,{year:"numeric",month:"short",day:"numeric"})}catch{return ""}};
+const uidShort=()=>Math.random().toString(36).slice(2,10);
+
+const ICON={dash:'<path d="M3 13h8V3H3zM13 21h8V11h-8zM13 3v6h8V3zM3 21h8v-6H3z"/>',chat:'<path d="M21 12a8 8 0 0 1-11.6 7.1L4 21l1.9-5.4A8 8 0 1 1 21 12z"/>',train:'<path d="M2 8l10-5 10 5-10 5z"/><path d="M6 10v5c3 2.5 9 2.5 12 0v-5"/>',exam:'<path d="M9 11l3 3 8-8"/><path d="M20 12v7a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h9"/>',sim:'<path d="M13 2L4 14h7l-1 8 9-12h-7z"/>',rep:'<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/>',parts:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>',kb:'<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20V3H6.5A2.5 2.5 0 0 0 4 5.5z"/><path d="M4 19.5A2.5 2.5 0 0 0 6.5 22H20v-5"/>',admin:'<path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/>',mic:'<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',spk:'<path d="M11 5L6 9H3v6h3l5 4z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/>',send:'<path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/>',dl:'<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>',copy:'<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>',plus:'<path d="M12 5v14M5 12h14"/>'};
+const ic=(n,cls="")=>`<svg viewBox="0 0 24 24" class="${cls}" aria-hidden="true">${ICON[n]}</svg>`;
+const VIEWS=[["dash","nav_dash"],["chat","nav_chat"],["train","nav_train"],["exam","nav_exam"],["sim","nav_sim"],["rep","nav_rep"],["parts","nav_parts"],["kb","nav_kb"],["admin","nav_admin"]];
+
+/* ---------- progress ---------- */
+function levelOf(xp){let i=0;XP_AT.forEach((v,k)=>{if(xp>=v)i=k});return i}
+function lessonsDone(){return Object.values(S.st.progress).reduce((a,v)=>a+v.length,0)}
+let saveTimer=null;
+function saveState(){
+  if(!db||!S.uid)return;
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(async()=>{
+    try{
+      await db.doc(`ea_users/${S.uid}`).set(S.st);
+      await db.doc(`ea_progress/${S.uid}`).set({name:S.name,email:S.email,xp:S.st.xp,level:LEVELS[levelOf(S.st.xp)],lessons:lessonsDone(),certs:S.st.certs.map(c=>c.course),sims:S.st.sims.length,at:Date.now()});
+    }catch(e){console.warn(e)}
+  },500);
+}
+function addXp(n){const before=levelOf(S.st.xp);S.st.xp+=n;saveState();if(levelOf(S.st.xp)>before)toast(t("level")+": "+t("lv_"+LEVELS[levelOf(S.st.xp)]))}
+
+/* ---------- AI ---------- */
+const SYSTEM=()=>`You are Electrical Assistant, a senior electrical maintenance engineer and trainer supporting facility technicians who maintain standby generators, UPS systems, automatic transfer switches, motors, LV circuit breakers, switchgear and battery systems.
+Rules:
+- Safety first. For any hands-on task, start with the hazards and controls: lockout/tagout, test before touch (live-dead-live), arc-flash PPE from the equipment label, stored energy (capacitors, batteries, back-feed). Never recommend energised work when de-energised work is possible; if live diagnostic work is unavoidable, say it must be done by a qualified person under the site permit system.
+- Be practical and specific: step-by-step checks in a sensible order, typical values with units (SI), what each result means, when to escalate to the manufacturer.
+- When reference excerpts are given, rely on them and cite them as [S1], [S2]. If the excerpts don't cover the question, say so and answer from general good practice. Never invent part numbers or settings for a specific model; tell the user to confirm in the manufacturer's manual.
+- Use Markdown with short headings and lists.
+- Write the whole answer in ${LANGNAME[S.lang]}.`;
+async function ai(input,{json=false,onText,tier="default",signal}={}){
+  if(!sample)throw {code:"not_granted",message:t("ai_off")};
+  const o={modelTier:tier,cache:false};if(onText)o.onText=onText;if(signal)o.signal=signal;
+  return json?sample.json(input,o):(await sample(input,o)).text;
+}
+
+/* ---------- knowledge base search ---------- */
+const STOP=new Set("the a an and or of to in on for with is are be at by it this that how what why do does i my we our from as can should when which le la les des un une et ou de du en pour avec est sont au aux".split(" "));
+const toks=s=>String(s).toLowerCase().normalize("NFKD").replace(/[\u0300-\u036f]/g,"").split(/[^\p{L}\p{N}.\-]+/u).filter(w=>w.length>1&&!STOP.has(w));
+function chunkText(text,size=1400,overlap=200){const out=[];const clean=text.replace(/\s+\n/g,"\n").replace(/[ \t]+/g," ").trim();for(let i=0;i<clean.length;i+=size-overlap){out.push(clean.slice(i,i+size));if(i+size>=clean.length)break}return out}
+let builtinChunks=null;
+function allChunks(){
+  if(!builtinChunks)builtinChunks=KB_BUILTIN.flatMap(d=>chunkText(d.text).map((x,n)=>({doc:d.id,title:d.title,n,text:x,builtin:true})));
+  return builtinChunks.concat(S.chunks||[]);
+}
+async function loadChunks(){
+  if(!db||S.chunks)return;
+  try{const snap=await db.collection("ea_kbchunks").get();S.chunks=snap.docs.map(d=>d.data())}catch(e){S.chunks=[]}
+}
+function searchKb(q,k=5){
+  const qt=[...new Set(toks(q))];if(!qt.length)return [];
+  const docs=allChunks();const N=docs.length;const df={};
+  const tk=docs.map(d=>{const ts=toks(d.title+" "+d.text);const set=new Set(ts);qt.forEach(w=>{if(set.has(w))df[w]=(df[w]||0)+1});return ts});
+  const avg=tk.reduce((a,x)=>a+x.length,0)/Math.max(1,N);
+  return docs.map((d,i)=>{const tf={};tk[i].forEach(w=>{tf[w]=(tf[w]||0)+1});let s=0;qt.forEach(w=>{if(!tf[w])return;const idf=Math.log(1+(N-df[w]+.5)/(df[w]+.5));s+=idf*(tf[w]*2.2)/(tf[w]+1.2*(.25+.75*tk[i].length/avg))});return {...d,score:s}}).filter(d=>d.score>0).sort((a,b)=>b.score-a.score).slice(0,k);
+}
+function highlight(text,q){let h=esc(text);toks(q).slice(0,8).forEach(w=>{if(w.length<3)return;h=h.replace(new RegExp("("+w.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+")","gi"),"<mark>$1</mark>")});return h}
+
+/* ---------- PDF / downloads ---------- */
+const hasArabic=s=>/[\u0600-\u06FF]/.test(s);
+async function saveFile(filename,data){
+  if(!downloads){toast(t("dl_off"));return}
+  try{await downloads.save({filename,data})}catch(e){if(e&&e.code!=="declined")toast(errMsg(e))}
+}
+async function exportDoc(base,title,meta,sections){
+  const all=title+meta.join(" ")+sections.map(s=>s[1]).join(" ");
+  if(hasArabic(all)||!window.jspdf){
+    if(hasArabic(all))toast(t("arabic_pdf"));
+    const txt=[title,"",...meta,"",...sections.filter(s=>s[1]).flatMap(([h,b])=>[h.toUpperCase(),b,""])].join("\n");
+    return saveFile(base+".txt",new Blob([txt],{type:"text/plain"}));
+  }
+  const {jsPDF}=window.jspdf;const d=new jsPDF({unit:"mm",format:"a4"});const W=210,M=16;let y=0;
+  const clean=s=>String(s||"").replace(/[^\x09\x0A\x0D\x20-\x7E\u00A0-\u00FF\u2013\u2014\u2018\u2019\u201C\u201D\u2022\u20AC]/g,"").replace(/\*\*/g,"");
+  d.setFillColor(22,35,47);d.rect(0,0,W,26,"F");d.setFillColor(242,169,59);d.rect(0,26,W,1.6,"F");
+  d.setTextColor(255,255,255);d.setFont("helvetica","bold");d.setFontSize(15);d.text("Electrical Assistant",M,12);
+  d.setFont("helvetica","normal");d.setFontSize(10);d.text(clean(title).slice(0,90),M,19);
+  y=36;d.setTextColor(30,40,50);d.setFontSize(9);d.setTextColor(90,104,120);
+  meta.forEach(m=>{d.text(clean(m),M,y);y+=5});y+=3;
+  sections.forEach(([h,b])=>{if(!b)return;
+    if(y>270){d.addPage();y=20}
+    d.setFont("helvetica","bold");d.setFontSize(11);d.setTextColor(184,110,0);d.text(clean(h),M,y);y+=6;
+    d.setFont("helvetica","normal");d.setFontSize(10);d.setTextColor(25,32,43);
+    d.splitTextToSize(clean(b),W-2*M).forEach(line=>{if(y>282){d.addPage();y=20}d.text(line,M,y);y+=5});y+=4});
+  const n=d.getNumberOfPages();for(let i=1;i<=n;i++){d.setPage(i);d.setFontSize(8);d.setTextColor(130,140,150);d.text(`Generated ${new Date().toISOString().slice(0,10)}  ·  ${i}/${n}`,M,292)}
+  return saveFile(base+".pdf",d.output("blob"));
+}
+async function exportCert(c){
+  if(!window.jspdf)return toast(t("err"));
+  const {jsPDF}=window.jspdf;const d=new jsPDF({orientation:"landscape",unit:"mm",format:"a4"});const W=297,H=210;
+  const latin=s=>hasArabic(s)?"":String(s);
+  d.setFillColor(22,35,47);d.rect(0,0,W,H,"F");d.setFillColor(255,255,255);d.rect(10,10,W-20,H-20,"F");
+  d.setDrawColor(242,169,59);d.setLineWidth(1.5);d.rect(16,16,W-32,H-32);
+  d.setTextColor(184,110,0);d.setFont("helvetica","bold");d.setFontSize(12);d.text("ELECTRICAL ASSISTANT",W/2,38,{align:"center"});
+  d.setTextColor(22,35,47);d.setFontSize(30);d.text("Certificate of Competence",W/2,60,{align:"center"});
+  d.setFont("helvetica","normal");d.setFontSize(13);d.setTextColor(90,104,120);d.text("This certifies that",W/2,80,{align:"center"});
+  d.setFont("helvetica","bold");d.setFontSize(24);d.setTextColor(22,35,47);d.text(latin(c.name)||"Certified technician",W/2,96,{align:"center"});
+  d.setFont("helvetica","normal");d.setFontSize(13);d.setTextColor(90,104,120);d.text("has demonstrated competence in",W/2,112,{align:"center"});
+  d.setFont("helvetica","bold");d.setFontSize(19);d.setTextColor(22,35,47);d.text(c.course,W/2,126,{align:"center"});
+  d.setFont("helvetica","normal");d.setFontSize(12);d.text(`Level: ${c.level[0].toUpperCase()+c.level.slice(1)}   ·   Exam score: ${c.score}%`,W/2,140,{align:"center"});
+  d.setFontSize(10);d.setTextColor(90,104,120);d.text(`Certificate no. ${c.code}   ·   Issued ${new Date(c.at).toISOString().slice(0,10)}`,W/2,170,{align:"center"});
+  return saveFile(`certificate-${c.code}.pdf`,d.output("blob"));
+}
+
+/* ---------- voice ---------- */
+function speak(text){
+  try{const u=new SpeechSynthesisUtterance(String(text).replace(/[#*_`>|\[\]]/g," ").slice(0,4000));u.lang=SPEECH[S.lang];speechSynthesis.cancel();speechSynthesis.speak(u)}catch{toast(t("err"))}
+}
+function listen(target){
+  const R=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!R){toast("Voice input isn't supported in this browser. Use Chrome or Edge, or type instead.");return}
+  try{const r=new R();r.lang=SPEECH[S.lang];r.interimResults=true;
+    r.onresult=e=>{target.value=[...e.results].map(x=>x[0].transcript).join(" ")};
+    r.onerror=e=>toast(e.error==="not-allowed"||e.error==="service-not-allowed"?"Allow the microphone for this site in your browser, or type instead.":t("err"));
+    r.start();toast("🎙 …")}catch{toast("Allow the microphone for this site in your browser, or type instead.")}
+}
+
+/* ---------- shell ---------- */
+function renderShell(){
+  document.documentElement.lang=S.lang;document.documentElement.dir=S.lang==="ar"?"rtl":"ltr";
+  $("#app").innerHTML=`<div class="app">
+  <aside class="rail">
+    <div class="brand"><svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="6" fill="#F2A93B"/><path d="M18 4L8 18h7l-2 10 11-15h-7z" fill="#16232F"/></svg><div><b>Electrical Assistant</b><span>${esc(t("tagline"))}</span></div></div>
+    <nav class="nav" aria-label="Sections">${VIEWS.filter(([v])=>v!=="admin"||S.isAdmin).map(([v,k])=>`<button data-go="${v}" ${S.view===v?'aria-current="page"':""}>${ic(v)}<span>${esc(t(k))}</span></button>`).join("")}</nav>
+    <div class="rail-foot">
+      <span class="who small">${esc(S.name)}</span><a class="who small" href="../" style="color:var(--rail-ink)">← Electrical Unit</a><button class="btn sm" style="background:transparent;color:var(--rail-ink);border-color:rgba(255,255,255,.18)" data-act="signout">Sign out</button>
+      <select id="lang" aria-label="${esc(t("language"))}"><option value="en">English</option><option value="fr">Français</option><option value="ar">العربية</option></select>
+    </div>
+  </aside>
+  <main class="main" id="main"></main></div>`;
+  $("#lang").value=S.lang;
+  renderView();
+}
+function go(v){S.view=v;document.querySelectorAll(".nav button").forEach(b=>b.toggleAttribute("aria-current",b.dataset.go===v)||b.dataset.go===v&&b.setAttribute("aria-current","page"));renderView();window.scrollTo(0,0);try{history.replaceState(null,"","#"+v)}catch{}}
+function renderView(){
+  const m=$("#main");if(!m)return;
+  const fn={dash:vDash,chat:vChat,train:vTrain,exam:vExam,sim:vSim,rep:vRep,parts:vParts,kb:vKb,admin:vAdmin}[S.view]||vDash;
+  m.innerHTML=`<div class="wrap">${fn()}</div>`;
+  after[S.view]?.();
+}
+const after={};
+const head=(title,sub,right="")=>`<div class="head"><div><h1>${esc(title)}</h1><p>${esc(sub)}</p></div>${right}</div>`;
+const aiNotice=()=>sample?"":`<div class="notice">${esc(t("ai_off"))}</div>`;
+const dataNotice=()=>db&&S.uid?"":`<div class="notice">${esc(t("data_off"))}</div>`;
+
+/* ---------- dashboard ---------- */
+function vDash(){
+  const lv=levelOf(S.st.xp),next=XP_AT[lv+1];const pct=next?Math.round((S.st.xp-XP_AT[lv])/(next-XP_AT[lv])*100):100;
+  const open=S.reports.filter(r=>r.status!=="closed").length;const low=PARTS.filter(p=>p.stock<=p.min).length;
+  const nextC=COURSES.find(c=>(S.st.progress[c.id]||[]).length<c.ls.length)||COURSES[0];
+  const nd=(S.st.progress[nextC.id]||[]).length;
+  const rule=t("rules")[new Date().getDate()%6];
+  return head(`${t("hello")}${S.name?", "+S.name.split(" ")[0]:""}`,t("dash_sub"))+dataNotice()+`
+  <div class="grid g4">
+    <div class="panel stat"><span class="label">${esc(t("level"))}</span><b>${esc(t("lv_"+LEVELS[lv]))}</b><div class="bar" style="margin-top:10px"><i style="width:${pct}%"></i></div><p class="small muted mono" style="margin-top:6px">${S.st.xp} ${esc(t("xp"))}${next?` · ${next-S.st.xp} ${esc(t("next_level"))}`:""}</p></div>
+    <div class="panel stat"><span class="label">${esc(t("lessons_done"))}</span><b>${lessonsDone()}<span class="muted" style="font-size:1rem"> / ${COURSES.reduce((a,c)=>a+c.ls.length,0)}</span></b></div>
+    <div class="panel stat"><span class="label">${esc(t("certs"))}</span><b>${S.st.certs.length}</b></div>
+    <div class="panel stat"><span class="label">${esc(t("open_reports"))}</span><b>${open}</b><p class="small muted">${esc(t("low_stock"))}: <span class="chip ${low?"warn":"ok"}">${low}</span></p></div>
+  </div>
+  <div class="safety"><span class="stripe" aria-hidden="true"></span><div><span class="label">${esc(t("rule_day"))}</span><p>${esc(rule)}</p></div></div>
+  <div class="grid g2">
+    <div class="panel"><h3>${esc(t("continue_learning"))}</h3>
+      <div class="stack"><div><span class="chip acc">${esc(t("lv_"+nextC.lv))}</span></div><h3 style="margin:0">${esc(nextC.t)}</h3><p class="muted small">${esc(nextC.d)}</p>
+      <div class="bar"><i style="width:${Math.round(nd/nextC.ls.length*100)}%"></i></div>
+      <div><button class="btn primary" data-open-course="${nextC.id}">${esc(t("start"))}: ${esc(nextC.ls[Math.min(nd,nextC.ls.length-1)])}</button></div></div></div>
+    <div class="panel"><h3>${esc(t("quick_actions"))}</h3><div class="grid g2" style="gap:10px">
+      <button class="btn" data-go="chat">${ic("chat")}${esc(t("qa_ask"))}</button><button class="btn" data-go="sim">${ic("sim")}${esc(t("qa_sim"))}</button>
+      <button class="btn" data-go="rep">${ic("rep")}${esc(t("qa_rep"))}</button><button class="btn" data-go="parts">${ic("parts")}${esc(t("qa_parts"))}</button></div></div>
+  </div>
+  <div class="panel"><h3>${esc(t("recent_reports"))}</h3>${reportList(S.reports.slice(0,5))}</div>`;
+}
+
+/* ---------- chat ---------- */
+function vChat(){
+  const modes=["general","trouble","safety","trainee"];
+  return head(t("nav_chat"),t("chat_sub"),`<button class="btn sm" data-act="new-chat">${ic("plus")}${esc(t("new_chat"))}</button>`)+aiNotice()+`
+  <div class="safety"><span class="stripe" aria-hidden="true"></span><p class="small">${esc(t("safety_banner"))}</p></div>
+  <div class="chat" id="chat">${S.chat.length?S.chat.map(msgHtml).join(""):`<div class="grid g2" style="gap:10px">${[1,2,3,4].map(i=>`<button class="btn" style="justify-content:flex-start;text-align:start" data-suggest="${i}">${esc(t("suggest"+i))}</button>`).join("")}</div>`}</div>
+  <div class="composer">
+    <div class="seg" role="group">${modes.map(m=>`<button data-mode="${m}" aria-pressed="${S.mode===m}">${esc(t("mode_"+m))}</button>`).join("")}</div>
+    <div class="box"><button class="btn ghost" data-act="mic" title="${esc(t("voice"))}" aria-label="${esc(t("voice"))}">${ic("mic")}</button>
+    <textarea id="q" rows="2" placeholder="${esc(t("placeholder"))}"></textarea>
+    <button class="btn primary" id="sendBtn" data-act="send" ${sample?"":"disabled"}>${ic("send")}<span>${esc(t("send"))}</span></button></div>
+  </div>`;
+}
+function msgHtml(m,i){
+  if(m.role==="user")return `<div class="msg u"><div class="bub">${esc(m.content)}</div></div>`;
+  const idx=S.chat.indexOf(m);
+  return `<div class="msg a"><div class="bub md" id="m${idx}">${m.content?md(m.content):'<span class="typing"><i></i><i></i><i></i></span>'}</div>
+  <div class="msg-tools">${m.sources&&m.sources.length?`<span class="label">${esc(t("sources"))}</span><div class="cites">${m.sources.map((s,k)=>`<button class="cite" data-kbdoc="${esc(s.doc)}">[S${k+1}] ${esc(s.title.slice(0,48))}</button>`).join("")}</div>`:""}
+  ${m.content?`<button class="btn ghost sm" data-speak="${idx}">${ic("spk")}${esc(t("speak"))}</button><button class="btn ghost sm" data-copy="${idx}">${ic("copy")}${esc(t("copy"))}</button>`:""}</div></div>`;
+}
+after.chat=()=>{const q=$("#q");q.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();sendChat()}});if(S.pendingQ){q.value=S.pendingQ;S.pendingQ=null;q.focus()}};
+let chatAbort=null;
+async function sendChat(){
+  const q=$("#q");const text=q.value.trim();if(!text)return;
+  if(chatAbort){chatAbort.abort();return}
+  await loadChunks();
+  const hits=searchKb(text+" "+(S.chat.filter(m=>m.role==="user").slice(-1)[0]?.content||""),4);
+  const modeTxt={general:"",trouble:"Mode: troubleshooting. Give a structured fault-finding plan: safety precautions, most likely causes ranked, checks in order with expected readings, then corrective actions and when to escalate.",safety:"Mode: safety brief. Produce a job safety brief: hazards, isolation points and LOTO steps, PPE with arc-flash considerations, verification of absence of voltage, emergency actions.",trainee:"Mode: trainee. Explain in plain language for a beginner technician, define terms, use an analogy, finish with 3 quick self-check questions."}[S.mode];
+  const ctx=hits.length?"Reference excerpts:\n"+hits.map((h,k)=>`[S${k+1}] ${h.title}\n${h.text}`).join("\n\n"):"No reference excerpts matched.";
+  const history=S.chat.filter(m=>m.content).slice(-10).map(m=>({role:m.role,content:m.content}));
+  S.chat.push({role:"user",content:text});const a={role:"assistant",content:"",sources:hits.map(h=>({doc:h.doc,title:h.title}))};S.chat.push(a);
+  q.value="";$("#chat").innerHTML=S.chat.map(msgHtml).join("");
+  const btn=$("#sendBtn");btn.innerHTML=`<span>${esc(t("stop"))}</span>`;
+  chatAbort=new AbortController();
+  const el=()=>document.getElementById("m"+S.chat.indexOf(a));
+  try{
+    const input=[...history,{role:"user",content:`${SYSTEM()}\n\n${modeTxt}\n\n${ctx}\n\nQuestion: ${text}`}];
+    const out=await ai(input,{signal:chatAbort.signal,onText:({text})=>{a.content=text;const e=el();if(e)e.innerHTML=md(text)}});
+    a.content=out;
+  }catch(e){if(e&&e.name!=="AbortError"&&e.code!=="aborted")a.content=a.content||("_"+errMsg(e)+"_")}
+  chatAbort=null;
+  if(S.view==="chat"){$("#chat").innerHTML=S.chat.map(msgHtml).join("");const b=$("#sendBtn");if(b)b.innerHTML=`${ic("send")}<span>${esc(t("send"))}</span>`}
+  if(!a.content)S.chat.splice(S.chat.indexOf(a),1);
+}
+
+/* ---------- training ---------- */
+function vTrain(){
+  if(S.lesson)return vLesson();
+  if(S.course)return vCourse();
+  const plan=S.st.plan;
+  return head(t("nav_train"),t("train_sub"))+dataNotice()+`
+  <div class="panel"><div class="spread"><h3 style="margin:0">${esc(t("my_plan"))}</h3>${plan?`<span class="small muted">${fmtDate(plan.at)}</span>`:""}</div>
+   ${plan?`<div class="md" style="margin-top:10px">${md(plan.md)}</div>`:""}
+   <div class="row" style="margin-top:12px;align-items:flex-end"><label class="f" style="flex:1 1 280px">${esc(t("plan_goal"))}<input class="i" id="goal" placeholder="${esc(t("plan_goal_ph"))}"></label><button class="btn ${plan?"":"primary"}" data-act="plan" ${sample?"":"disabled"}>${esc(plan?t("regenerate"):t("make_plan"))}</button></div><div id="planOut"></div></div>
+  ${LEVELS.map(lv=>`<section class="stack"><div class="lvl-head"><h2>${esc(t("lv_"+lv))}</h2><span class="muted small mono">${XP_AT[LEVELS.indexOf(lv)]}+ ${esc(t("xp"))}</span></div>
+   <div class="grid g3">${COURSES.filter(c=>c.lv===lv).map(c=>{const d=(S.st.progress[c.id]||[]).length;const cert=S.st.certs.find(x=>x.courseId===c.id);
+    return `<button class="panel course" data-open-course="${c.id}"><div class="spread" style="width:100%"><span class="chip">${esc(catName(c.cat))}</span>${cert?`<span class="chip ok">✓ ${esc(t("certs"))}</span>`:""}</div><h3>${esc(c.t)}</h3><p class="small muted">${esc(c.d)}</p><div style="width:100%"><div class="bar"><i style="width:${Math.round(d/c.ls.length*100)}%"></i></div><p class="small muted mono" style="margin-top:5px">${d}/${c.ls.length} ${esc(t("lessons"))}</p></div></button>`}).join("")}</div></section>`).join("")}`;
+}
+function vCourse(){
+  const c=COURSES.find(x=>x.id===S.course);const done=S.st.progress[c.id]||[];
+  return `<div><button class="btn ghost sm" data-act="back-train">← ${esc(t("back"))}</button></div>`+head(c.t,c.d,`<button class="btn" data-quiz-course="${c.id}">${esc(t("take_quiz"))}</button>`)+`
+  <div class="panel"><div class="list">${c.ls.map((l,i)=>`<div class="item"><div class="t row"><span class="mono muted">${String(i+1).padStart(2,"0")}</span><span>${esc(l)}</span></div><div class="row">${done.includes(i)?`<span class="chip ok">${esc(t("done"))}</span>`:""}<button class="btn sm ${done.includes(i)?"":"primary"}" data-lesson="${i}">${esc(t("open"))}</button></div></div>`).join("")}</div></div>`;
+}
+function vLesson(){
+  const c=COURSES.find(x=>x.id===S.course);const i=S.lesson.i;const done=(S.st.progress[c.id]||[]).includes(i);
+  return `<div><button class="btn ghost sm" data-act="back-course">← ${esc(c.t)}</button></div>`+head(c.ls[i],`${t("lv_"+c.lv)} · ${c.t}`)+`
+  <div class="panel"><div class="md" id="lessonBody">${S.lesson.md?md(S.lesson.md):`<p class="muted"><span class="typing"><i></i><i></i><i></i></span> ${esc(t("writing_lesson"))}</p>`}</div></div>
+  <div class="row">${done?`<span class="chip ok">✓ ${esc(t("done"))}</span>`:`<button class="btn primary" data-act="lesson-done" ${S.lesson.md?"":"disabled"}>${esc(t("mark_done"))}</button>`}
+   ${S.lesson.md?`<button class="btn ghost" data-speak-lesson="1">${ic("spk")}${esc(t("speak"))}</button><button class="btn ghost" data-act="lesson-pdf">${ic("dl")}${esc(t("download_pdf"))}</button><button class="btn ghost" data-act="lesson-redo">${esc(t("regenerate"))}</button>`:""}
+   ${i<c.ls.length-1?`<button class="btn" data-lesson="${i+1}">${esc(c.ls[i+1])} →</button>`:`<button class="btn" data-quiz-course="${c.id}">${esc(t("take_quiz"))} →</button>`}</div>`;
+}
+async function openLesson(i,force=false){
+  const c=COURSES.find(x=>x.id===S.course);S.lesson={i,md:""};renderView();
+  const key=`${c.id}--${i}--${S.lang}`;
+  try{
+    if(db&&!force){const s=await db.doc("ea_lessons/"+key).get();if(s.exists&&s.data().md){S.lesson.md=s.data().md;return renderView()}}
+    const prompt=`${SYSTEM()}\n\nWrite a training lesson for an electrical maintenance technician.\nCourse: ${c.t} (${c.lv} level). Course summary: ${c.d}\nLesson ${i+1} of ${c.ls.length}: ${c.ls[i]}\nOther lessons in the course: ${c.ls.join("; ")}\n\nStructure with Markdown headings: Learning objectives; Key concepts (with typical values and units); Step by step or worked example from a real facility; Safety notes; Common mistakes; Quick check (3 questions, each answer inside <details><summary>Answer</summary>...</details>). About 700-900 words. Write in ${LANGNAME[S.lang]}.`;
+    const out=await ai(prompt,{onText:({text})=>{if(S.lesson&&S.lesson.i===i){S.lesson.md=text;const b=$("#lessonBody");if(b)b.innerHTML=md(text)}}});
+    if(!S.lesson||S.lesson.i!==i)return;
+    S.lesson.md=out;renderView();
+    if(db&&S.canWrite)db.doc("ea_lessons/"+key).set({md:out,course:c.id,i,lang:S.lang,at:Date.now()}).catch(()=>{});
+  }catch(e){if(S.lesson){S.lesson.md="_"+errMsg(e)+"_";renderView()}}
+}
+async function makePlan(){
+  const goal=$("#goal")?.value||"";const out=$("#planOut");
+  out.innerHTML=`<p class="muted" style="margin-top:10px"><span class="typing"><i></i><i></i><i></i></span></p>`;
+  const prog=COURSES.map(c=>`${c.t} [${c.lv}]: ${(S.st.progress[c.id]||[]).length}/${c.ls.length} lessons${S.st.certs.find(x=>x.courseId===c.id)?", certified":""}`).join("\n");
+  const att=S.st.attempts.slice(0,8).map(a=>`${a.course}: ${a.score}%`).join("; ")||"none";
+  try{
+    const md_=await ai(`${SYSTEM()}\n\nCreate a personal 8-week learning plan for this technician using ONLY the courses below. Current level: ${LEVELS[levelOf(S.st.xp)]}. Goal: ${goal||"progress to the next level"}.\nCourse progress:\n${prog}\nRecent quiz scores: ${att}\n\nFormat: a one-paragraph assessment, then a Markdown table Week | Focus course and lessons | Practice (quiz, simulator scenario or site task) | Target. End with 3 practical tips. Keep it under 400 words. Write in ${LANGNAME[S.lang]}.`,{onText:({text})=>{out.innerHTML=`<div class="md" style="margin-top:10px">${md(text)}</div>`}});
+    S.st.plan={md:md_,goal,at:Date.now()};saveState();renderView();
+  }catch(e){out.innerHTML=`<p class="notice" style="margin-top:10px">${esc(errMsg(e))}</p>`}
+}
+
+/* ---------- assessment ---------- */
+function vExam(){
+  const q=S.quiz;
+  const form=`<div class="panel"><div class="row" style="align-items:flex-end">
+    <label class="f" style="flex:2 1 260px">${esc(t("topic"))}<select class="i" id="qc">${LEVELS.map(lv=>`<optgroup label="${esc(t("lv_"+lv))}">${COURSES.filter(c=>c.lv===lv).map(c=>`<option value="${c.id}">${esc(c.t)}</option>`).join("")}</optgroup>`).join("")}</select></label>
+    <div class="f" style="flex:1 1 260px"><span>&nbsp;</span><div class="seg" role="group"><button data-qmode="quiz" aria-pressed="${(S.qmode||"quiz")==="quiz"}">${esc(t("quiz"))} · ${esc(t("q5"))}</button><button data-qmode="exam" aria-pressed="${S.qmode==="exam"}">${esc(t("exam"))} · ${esc(t("q10"))}</button></div></div>
+    <button class="btn primary" data-act="gen-quiz" ${sample?"":"disabled"}>${esc(t("generate"))}</button></div></div>`;
+  let body="";
+  if(q&&q.loading)body=`<div class="panel"><p class="muted"><span class="typing"><i></i><i></i><i></i></span> ${esc(t("generating"))}</p></div>`;
+  else if(q&&q.questions){
+    const graded=q.graded;
+    body=`<div class="panel stack"><div class="spread"><h3 style="margin:0">${esc(q.mode==="exam"?t("exam"):t("quiz"))}: ${esc(q.course)}</h3>${graded?`<span class="chip ${q.score>=80?"ok":"bad"}">${esc(t("score"))} ${q.score}% · ${esc(q.score>=80?t("passed"):t("failed"))}</span>`:""}</div>
+    ${q.questions.map((x,i)=>`<fieldset class="q" style="margin:0"><legend class="small muted mono">${i+1}/${q.questions.length}</legend><b>${esc(x.q)}</b>
+      ${x.options.map((o,k)=>`<label class="opt ${graded?(k===x.answer?"right":(q.answers[i]===k?"wrong":"")):""}"><input type="radio" name="q${i}" value="${k}" ${q.answers[i]===k?"checked":""} ${graded?"disabled":""}><span>${esc(o)}</span></label>`).join("")}
+      ${graded?`<p class="small muted">${esc(x.explain)}</p>`:""}</fieldset>`).join("")}
+    <div class="row">${graded?`<button class="btn primary" data-act="gen-quiz">${esc(t("try_again"))}</button>`:`<button class="btn primary" data-act="grade">${esc(t("submit"))}</button>`}</div></div>`;
+    if(graded&&q.cert)body+=certHtml(q.cert);
+  }
+  const certs=S.st.certs.length?`<div class="grid g2">${S.st.certs.map(certHtml).join("")}</div>`:`<p class="muted">${esc(t("none_yet"))}</p>`;
+  const hist=S.st.attempts.length?`<div class="tbl"><table><thead><tr><th>${esc(t("date"))}</th><th>${esc(t("topic"))}</th><th>${esc(t("rtype"))}</th><th>${esc(t("score"))}</th></tr></thead><tbody>${S.st.attempts.slice(0,12).map(a=>`<tr><td>${fmtDate(a.at)}</td><td>${esc(a.course)}</td><td>${esc(a.mode==="exam"?t("exam"):t("quiz"))}</td><td class="num"><span class="chip ${a.score>=80?"ok":a.score>=60?"warn":"bad"}">${a.score}%</span></td></tr>`).join("")}</tbody></table></div>`:`<p class="muted">${esc(t("none_yet"))}</p>`;
+  return head(t("nav_exam"),t("exam_sub"))+aiNotice()+form+body+`<section class="stack"><h2>${esc(t("my_certs"))}</h2>${certs}</section><section class="stack"><h2>${esc(t("history"))}</h2>${hist}</section>`;
+}
+after.exam=()=>{const s=$("#qc");if(s&&S.qcourse)s.value=S.qcourse;if(s)s.onchange=()=>S.qcourse=s.value;document.querySelectorAll('.q input').forEach(r=>r.onchange=()=>{const i=+r.name.slice(1);S.quiz.answers[i]=+r.value})};
+const certHtml=c=>`<div class="cert"><span class="label">${esc(t("cert_title"))}</span><h3>${esc(c.name||"")}</h3><p class="small muted">${esc(t("cert_line"))}</p><b>${esc(c.course)}</b><p class="small"><span class="chip acc">${esc(t("lv_"+c.level))}</span> <span class="mono">${c.score}%</span></p><p class="small muted mono">${esc(t("cert_code"))} ${esc(c.code)} · ${fmtDate(c.at)}</p><button class="btn sm" data-cert="${esc(c.code)}">${ic("dl")}${esc(t("download_pdf"))}</button></div>`;
+async function genQuiz(){
+  const cid=$("#qc")?.value||S.qcourse||COURSES[0].id;S.qcourse=cid;const c=COURSES.find(x=>x.id===cid);const mode=S.qmode||"quiz";const n=mode==="exam"?10:5;
+  S.quiz={loading:true};renderView();
+  try{
+    const r=await ai(`You write assessment questions for electrical maintenance technicians.\nCourse: ${c.t} (${c.lv} level). Topics: ${c.ls.join("; ")}.\nWrite ${n} multiple-choice questions${mode==="exam"?" for a certification exam covering every topic, mixing recall, applied calculation and practical scenario questions":" for practice"}. Each has exactly 4 options and one correct answer. Vary the position of the correct answer. Include at least one safety question. Make wrong options plausible.\nWrite questions, options and explanations in ${LANGNAME[S.lang]}.\nReturn JSON only: {"questions":[{"q":"...","options":["...","...","...","..."],"answer":0,"explain":"one or two sentences on why"}]}`,{json:true});
+    const qs=(r&&r.questions||[]).filter(x=>x&&x.q&&Array.isArray(x.options)&&x.options.length===4&&Number.isInteger(+x.answer)).map(x=>({...x,answer:+x.answer}));
+    if(!qs.length)throw {message:"no questions"};
+    S.quiz={questions:qs,answers:{},mode,course:c.t,courseId:c.id,level:c.lv};
+  }catch(e){S.quiz=null;toast(errMsg(e))}
+  renderView();
+}
+function grade(){
+  const q=S.quiz;if(Object.keys(q.answers).length<q.questions.length)return toast(t("answer_all"));
+  const right=q.questions.filter((x,i)=>q.answers[i]===x.answer).length;q.score=Math.round(right/q.questions.length*100);q.graded=true;
+  S.st.attempts.unshift({course:q.course,courseId:q.courseId,mode:q.mode,score:q.score,at:Date.now()});S.st.attempts=S.st.attempts.slice(0,50);
+  let xp=right*2;
+  if(q.mode==="exam"&&q.score>=80){
+    q.cert={code:"EA-"+Date.now().toString(36).toUpperCase().slice(-5)+"-"+uidShort().slice(0,3).toUpperCase(),course:q.course,courseId:q.courseId,level:q.level,score:q.score,at:Date.now(),name:S.name};
+    S.st.certs=S.st.certs.filter(c=>c.courseId!==q.courseId);S.st.certs.unshift(q.cert);xp+=100;toast(t("cert_earned"));
+  }else if(q.score>=80)xp+=25;
+  addXp(xp);renderView();
+}
+
+/* ---------- simulator ---------- */
+function vSim(){
+  const s=S.sim;
+  const form=`<div class="panel"><div class="row" style="align-items:flex-end">
+    <div class="f" style="flex:2 1 300px"><span>${esc(t("equipment"))}</span><div class="seg" role="group">${CATS.map(c=>`<button data-simcat="${c}" aria-pressed="${(S.simCat||"generator")===c}">${esc(catName(c))}</button>`).join("")}</div></div>
+    <div class="f" style="flex:1 1 200px"><span>${esc(t("difficulty"))}</span><div class="seg" role="group">${["easy","medium","hard"].map(d=>`<button data-simdiff="${d}" aria-pressed="${(S.simDiff||"medium")===d}">${esc(t("d_"+d))}</button>`).join("")}</div></div>
+    <button class="btn primary" data-act="sim-start" ${sample?"":"disabled"}>${esc(s&&s.sc?t("new_sim"):t("start_sim"))}</button></div></div>`;
+  if(!s)return head(t("nav_sim"),t("sim_sub"))+aiNotice()+form+simHistory();
+  if(s.loading)return head(t("nav_sim"),t("sim_sub"))+form+`<div class="panel"><p class="muted"><span class="typing"><i></i><i></i><i></i></span> ${esc(t("building_sim"))}</p></div>`;
+  const sc=s.sc;
+  return head(t("nav_sim"),t("sim_sub"))+form+`
+  <div class="grid g2">
+   <div class="plate"><div class="spread"><span class="label">${esc(catName(s.cat))} · ${esc(t("d_"+s.diff))}</span><span class="chip">${esc(t("steps"))}: ${s.log.filter(l=>l.role==="me").length}</span></div>
+    <h3 style="margin-top:6px">${esc(sc.title)}</h3><p class="small muted mono">${esc(sc.equipment||"")}</p><p style="margin-top:8px">${esc(sc.context)}</p>
+    <p class="label" style="margin-top:12px">${esc(t("symptoms"))}</p><ul style="margin:4px 0 0;padding-inline-start:1.2em">${(sc.symptoms||[]).map(x=>`<li>${esc(x)}</li>`).join("")}</ul>
+    ${(s.alarms||[]).length?`<p class="label" style="margin-top:12px">${esc(t("alarms"))}</p><div class="row" style="gap:6px;margin-top:4px">${s.alarms.map(a=>`<span class="alarm">${esc(a)}</span>`).join("")}</div>`:""}
+    <p class="label" style="margin-top:12px">${esc(t("readings"))}</p><div class="readings">${Object.entries(s.readings||{}).map(([k,v])=>`<div class="reading"><span class="small muted">${esc(k)}</span><div class="v">${esc(v)}</div></div>`).join("")}</div>
+   </div>
+   <div class="panel stack"><div class="log" id="simlog">${s.log.map(l=>`<div class="e ${l.role==="me"?"me":""} ${l.flag?"flag":""}"><span class="label">${l.role==="me"?"▶":"◆"}</span><div class="${l.role==="me"?"":"md"}">${l.role==="me"?esc(l.text):md(l.text)}</div>${l.flag?`<span class="chip bad">⚠ ${esc(l.flag)}</span>`:""}</div>`).join("")}${s.busy?`<span class="typing"><i></i><i></i><i></i></span>`:""}</div>
+    ${s.debrief?"":`<div class="row" style="gap:6px">${["qa_loto","qa_alarms","qa_visual","qa_measure"].map(k=>`<button class="btn sm" data-simq="${k}">${esc(t(k))}</button>`).join("")}</div>
+    <div class="row"><input class="i" id="simact" style="flex:1 1 220px" placeholder="${esc(t("action_ph"))}"><button class="btn primary" data-act="sim-do" ${s.busy?"disabled":""}>${esc(t("do_it"))}</button></div>
+    <label class="f">${esc(t("your_diag"))}<textarea class="i" id="simdiag" placeholder="${esc(t("diag_ph"))}"></textarea></label><div><button class="btn" data-act="sim-diag" ${s.busy?"disabled":""}>${esc(t("diagnose"))}</button></div>`}
+   </div></div>
+  ${s.debrief?`<div class="panel stack"><div class="spread"><h3 style="margin:0">${esc(t("result"))}</h3><span class="chip ${s.debrief.score>=70?"ok":s.debrief.score>=40?"warn":"bad"}" style="font-size:.95rem">${s.debrief.score}/100</span></div>
+    <p><b>${esc(t("reveal"))}:</b> ${esc(sc.hidden?.fault)}. ${esc(sc.hidden?.root_cause||"")}</p><div class="md">${md(s.debrief.feedback)}</div>
+    ${(s.debrief.safety||[]).length?`<p class="label">${esc(t("safety_flags"))}</p><ul style="margin:0;padding-inline-start:1.2em">${s.debrief.safety.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:""}
+    <p class="label">${esc(t("ideal_path"))}</p><ol style="margin:0;padding-inline-start:1.3em">${(s.debrief.ideal||[]).map(x=>`<li>${esc(x)}</li>`).join("")}</ol></div>`:""}
+  ${simHistory()}`;
+}
+function simHistory(){return S.st.sims.length?`<section class="stack"><h2>${esc(t("history"))}</h2><div class="tbl"><table><thead><tr><th>${esc(t("date"))}</th><th>${esc(t("equipment"))}</th><th>${esc(t("title"))}</th><th>${esc(t("score"))}</th></tr></thead><tbody>${S.st.sims.slice(0,10).map(x=>`<tr><td>${fmtDate(x.at)}</td><td>${esc(catName(x.cat))}</td><td>${esc(x.title)}</td><td class="num">${x.score}</td></tr>`).join("")}</tbody></table></div></section>`:""}
+after.sim=()=>{const i=$("#simact");if(i)i.addEventListener("keydown",e=>{if(e.key==="Enter")simDo()});const l=$("#simlog");if(l)l.scrollTop=l.scrollHeight};
+async function simStart(){
+  const cat=S.simCat||"generator",diff=S.simDiff||"medium";S.sim={loading:true};renderView();
+  try{
+    const sc=await ai(`You run a fault-finding simulator for electrical maintenance technicians. Create one realistic fault scenario.\nEquipment type: ${cat}. Difficulty: ${diff} (easy = single obvious fault; medium = needs 3-5 checks; hard = misleading symptom or two interacting issues).\nUse a realistic facility setting (data centre, hospital, office HQ) with plausible ratings and readings. Do not reveal the fault in the visible fields.\nWrite all text in ${LANGNAME[S.lang]} (keys stay in English).\nReturn JSON only: {"title":"short","equipment":"make-agnostic description with ratings, e.g. 600 kVA 400/230 V diesel genset","context":"2-3 sentences: site, what happened, who called","symptoms":["..."],"alarms":["controller alarm text"],"readings":{"label with unit":"value"},"hidden":{"fault":"the actual fault","root_cause":"why it happened","correct_fix":"repair","key_checks":["checks an expert would do in order"],"safety_critical":["safety steps required before hands-on work"]}}`,{json:true,tier:"complex"});
+    if(!sc||!sc.title||!sc.hidden)throw {message:"bad scenario"};
+    S.sim={cat,diff,sc,readings:{...(sc.readings||{})},alarms:[...(sc.alarms||[])],log:[],locked:false};
+  }catch(e){S.sim=null;toast(errMsg(e))}
+  renderView();
+}
+async function simDo(text){
+  const s=S.sim;if(!s||s.busy)return;const inp=$("#simact");text=text||inp?.value.trim();if(!text)return;
+  s.log.push({role:"me",text});s.busy=true;renderView();
+  try{
+    const r=await ai(`You are the simulator engine for a technician fault-finding exercise. Stay in the scenario. Respond to the technician's action with what they observe, as a realistic simulation. Do not reveal the fault or give the answer; give only observations and measured values. If the action is unsafe (hands-on or opening covers without isolation/LOTO when required, wrong PPE, working on a DC string without opening the battery breaker, defeating interlocks), describe the hazard briefly and set safety_flag. If they apply isolation, track that the equipment is now de-energised (live readings drop to zero; insulation and resistance tests become possible).\nScenario (secret): ${JSON.stringify(s.sc)}\nCurrent readings: ${JSON.stringify(s.readings)}\nActive alarms: ${JSON.stringify(s.alarms)}\nPrevious steps: ${JSON.stringify(s.log.slice(0,-1).map(l=>(l.role==="me"?"TECH: ":"SIM: ")+l.text))}\nTechnician action: ${text}\nWrite text in ${LANGNAME[S.lang]}.\nReturn JSON only: {"observation":"2-4 sentences","readings":{"label with unit":"value"} (only new or changed readings, may be empty),"alarms":["full list of active alarms after the action"],"safety_flag":"short text or empty string"}`,{json:true});
+    if(r.readings&&typeof r.readings==="object")Object.assign(s.readings,r.readings);
+    if(Array.isArray(r.alarms))s.alarms=r.alarms;
+    s.log.push({role:"sim",text:String(r.observation||""),flag:r.safety_flag||""});
+  }catch(e){s.log.push({role:"sim",text:"_"+errMsg(e)+"_"})}
+  s.busy=false;if(S.view==="sim")renderView();
+}
+async function simDiag(){
+  const s=S.sim;const d=$("#simdiag")?.value.trim();if(!d||!s)return;
+  s.busy=true;renderView();
+  try{
+    const r=await ai(`Score a technician's fault-finding exercise as a strict but fair senior engineer.\nScenario with the real fault: ${JSON.stringify(s.sc)}\nTechnician's steps: ${JSON.stringify(s.log.map(l=>(l.role==="me"?"TECH: ":"SIM: ")+l.text+(l.flag?" [SAFETY FLAG: "+l.flag+"]":"")))}\nTechnician's diagnosis and repair: ${d}\nScoring: diagnosis correctness 50, logical efficient checks 25, safety behaviour 25 (deduct for every safety flag and for skipping isolation before hands-on work).\nWrite text in ${LANGNAME[S.lang]}.\nReturn JSON only: {"score":0-100,"feedback":"Markdown, 80-150 words: what was right, what was missed","safety":["safety remarks"],"ideal":["expert step-by-step path"]}`,{json:true});
+    s.debrief={score:Math.max(0,Math.min(100,Math.round(+r.score||0))),feedback:r.feedback||"",safety:r.safety||[],ideal:r.ideal||[]};
+    S.st.sims.unshift({cat:s.cat,title:s.sc.title,score:s.debrief.score,at:Date.now()});S.st.sims=S.st.sims.slice(0,40);
+    addXp(s.debrief.score>=70?30:10);
+  }catch(e){toast(errMsg(e))}
+  s.busy=false;renderView();
+}
+
+/* ---------- reports ---------- */
+const RTYPES=["preventive","corrective","inspection","emergency"];
+const RFIELDS=["findings","actions","measurements","parts_used","recommendations","safety_notes"];
+function reportList(list){
+  if(!list.length)return `<p class="muted">${esc(t("none_yet"))}</p>`;
+  return `<div class="list">${list.map(r=>`<div class="item"><div class="t"><b>${esc(r.title||"—")}</b><div class="small muted"><span class="mono">${esc(r.equipment||"")}</span> · ${esc(t("t_"+(r.type||"preventive")))} · ${fmtDate(r.date||r.at)}${r.byName?` · ${esc(t("by"))} ${esc(r.byName)}`:""}</div></div><div class="row"><span class="chip ${r.status==="closed"?"ok":"warn"}">${esc(t(r.status==="closed"?"st_closed":"st_open"))}</span><button class="btn sm" data-rep="${esc(r.id)}">${esc(t("open"))}</button></div></div>`).join("")}</div>`;
+}
+function vRep(){
+  if(S.editing)return vRepEdit();
+  const list=S.reports.filter(r=>S.repFilter==="all"||r.status===S.repFilter);
+  return head(t("nav_rep"),t("rep_sub"),`<button class="btn primary" data-act="rep-new" ${db&&S.canWrite?"":"disabled"}>${ic("plus")}${esc(t("new_report"))}</button>`)+dataNotice()+`
+  <div class="seg" role="group">${["all","open","closed"].map(f=>`<button data-repf="${f}" aria-pressed="${S.repFilter===f}">${esc(f==="all"?t("all"):t("st_"+f))}</button>`).join("")}</div>
+  <div class="panel" id="repList">${reportList(list)}</div>`;
+}
+function vRepEdit(){
+  const r=S.editing;const ro=r.id&&!(S.isAdmin||r.by===S.uid);
+  const fld=(k,area)=>`<label class="f">${esc(t(k))}${area?`<textarea class="i" data-rf="${k}" ${ro?"readonly":""}>${esc(r[k]||"")}</textarea>`:`<input class="i" data-rf="${k}" value="${esc(r[k]||"")}" ${ro?"readonly":""}>`}</label>`;
+  return `<div><button class="btn ghost sm" data-act="rep-back">← ${esc(t("back"))}</button></div>`+head(r.id?(r.title||t("nav_rep")):t("new_report"),r.byName?`${t("by")} ${r.byName} · ${fmtDate(r.at)}`:t("rep_sub"))+`
+  ${ro?"":`<div class="panel stack"><label class="f">${esc(t("notes"))}<textarea class="i" id="repNotes" placeholder="${esc(t("notes_ph"))}"></textarea></label><div class="row"><button class="btn" data-act="rep-draft" ${sample?"":"disabled"}>${esc(t("draft"))}</button><button class="btn ghost" data-act="mic-notes">${ic("mic")}${esc(t("voice"))}</button></div></div>`}
+  <div class="panel stack">
+    <div class="grid g3">${fld("title")}
+      <label class="f">${esc(t("equipment"))}<input class="i" data-rf="equipment" list="eqlist" value="${esc(r.equipment||"")}" ${ro?"readonly":""}><datalist id="eqlist">${EQUIPMENT.map(e=>`<option value="${esc(e.tag)} · ${esc(e.n)}"></option>`).join("")}</datalist></label>
+      <label class="f">${esc(t("rtype"))}<select class="i" data-rf="type" ${ro?"disabled":""}>${RTYPES.map(x=>`<option value="${x}" ${r.type===x?"selected":""}>${esc(t("t_"+x))}</option>`).join("")}</select></label>
+      <label class="f">${esc(t("date"))}<input class="i" type="date" data-rf="date" value="${esc(r.date||new Date().toISOString().slice(0,10))}" ${ro?"readonly":""}></label>
+      ${fld("site")}
+      <label class="f">${esc(t("status"))}<select class="i" data-rf="status" ${ro?"disabled":""}><option value="open" ${r.status!=="closed"?"selected":""}>${esc(t("st_open"))}</option><option value="closed" ${r.status==="closed"?"selected":""}>${esc(t("st_closed"))}</option></select></label></div>
+    ${RFIELDS.map(k=>fld(k,true)).join("")}
+    <div class="row">${ro?"":`<button class="btn primary" data-act="rep-save">${esc(t("save"))}</button>`}<button class="btn" data-act="rep-pdf">${ic("dl")}${esc(t("download_pdf"))}</button>
+     ${r.id&&!ro?`<span id="delZone"><button class="btn danger" data-act="rep-del">${esc(t("delete"))}</button></span>`:""}</div>
+  </div>`;
+}
+function readRepForm(){document.querySelectorAll("[data-rf]").forEach(el=>S.editing[el.dataset.rf]=el.value)}
+async function repDraft(){
+  const notes=$("#repNotes").value.trim();if(!notes)return;readRepForm();
+  const b=document.querySelector('[data-act="rep-draft"]');b.disabled=true;b.textContent=t("drafting");
+  try{
+    const r=await ai(`Turn a technician's rough field notes into a professional maintenance report. Keep every fact, number and unit from the notes; do not invent readings or parts. Where the notes imply a safety point (isolation, PPE, hazards found), record it. Equipment register for reference: ${JSON.stringify(EQUIPMENT.map(e=>e.tag+" "+e.n+" ("+e.mfr+" "+e.model+", "+e.site+")"))}\nNotes: ${notes}\nWrite the text values in ${LANGNAME[S.lang]}.\nReturn JSON only: {"title":"short","equipment":"tag · name if known","type":"preventive|corrective|inspection|emergency","site":"","status":"open|closed","findings":"","actions":"","measurements":"one per line with units","parts_used":"one per line","recommendations":"","safety_notes":""}`,{json:true});
+    Object.keys(r||{}).forEach(k=>{if(typeof r[k]==="string"&&r[k])S.editing[k]=r[k]});if(!RTYPES.includes(S.editing.type))S.editing.type="corrective";
+    renderView();
+  }catch(e){toast(errMsg(e));b.disabled=false;b.textContent=t("draft")}
+}
+async function repSave(){
+  readRepForm();const r={...S.editing};if(!r.title){toast(t("title")+" ?");return}
+  const data={title:r.title,equipment:r.equipment||"",type:r.type||"preventive",date:r.date||"",site:r.site||"",status:r.status||"open",...Object.fromEntries(RFIELDS.map(k=>[k,r[k]||""])),by:r.by||S.uid,byName:r.byName||S.name,at:r.at||Date.now(),updated:Date.now()};
+  try{if(r.id)await db.doc("ea_reports/"+r.id).set(data);else await db.collection("ea_reports").add(data);toast(t("saved"));S.editing=null;renderView()}catch(e){toast(errMsg(e))}
+}
+function repPdf(){readRepForm();const r=S.editing;
+  exportDoc(`report-${(r.equipment||"report").split(" ")[0]}-${r.date||""}`,r.title||t("nav_rep"),[`${t("equipment")}: ${r.equipment||"-"}`,`${t("rtype")}: ${t("t_"+(r.type||"preventive"))}   ${t("date")}: ${r.date||"-"}   ${t("site")}: ${r.site||"-"}`,`${t("status")}: ${t(r.status==="closed"?"st_closed":"st_open")}   ${t("by")}: ${r.byName||S.name||"-"}`],RFIELDS.map(k=>[t(k),r[k]]))}
+
+/* ---------- parts ---------- */
+function vParts(){
+  const q=S.partsQ.toLowerCase();
+  const rows=PARTS.filter(p=>(S.partsCat==="all"||p.cat===S.partsCat)&&(!q||[p.pn,p.n,p.mfr,...p.fits].join(" ").toLowerCase().includes(q)));
+  const stockChip=p=>p.stock===0?`<span class="chip bad">${esc(t("out"))}</span>`:p.stock<=p.min?`<span class="chip warn">${esc(t("low"))} · ${p.stock}</span>`:`<span class="chip ok">${p.stock}</span>`;
+  const adv=S.advice;
+  return head(t("nav_parts"),t("parts_sub"))+`
+  <div class="panel stack"><h3 style="margin:0">${esc(t("advisor"))}</h3>
+   <div class="row" style="align-items:flex-end"><label class="f" style="flex:0 1 200px">${esc(t("equipment"))}<select class="i" id="advCat">${CATS.map(c=>`<option value="${c}" ${S.advCat===c?"selected":""}>${esc(catName(c))}</option>`).join("")}</select></label>
+   <label class="f" style="flex:1 1 300px">${esc(t("why"))}<input class="i" id="advQ" placeholder="${esc(t("advisor_ph"))}" value="${esc(S.advQ||"")}"></label><button class="btn primary" data-act="advise" ${sample?"":"disabled"}>${esc(t("recommend"))}</button></div>
+   <div id="advOut">${adv?(adv.loading?`<span class="typing"><i></i><i></i><i></i></span>`:adviceHtml(adv,stockChip)):aiNotice()}</div></div>
+  <section class="stack"><div class="spread"><h2>${esc(t("catalogue"))}</h2><div class="row"><input class="i" id="pq" style="width:min(260px,100%)" placeholder="${esc(t("search"))}" value="${esc(S.partsQ)}"><select class="i" id="pcat" style="width:auto">${["all",...CATS].map(c=>`<option value="${c}" ${S.partsCat===c?"selected":""}>${esc(c==="all"?t("all"):catName(c))}</option>`).join("")}</select></div></div>
+  <div class="tbl"><table><thead><tr><th>${esc(t("pn"))}</th><th>${esc(t("part"))}</th><th>${esc(t("equipment"))}</th><th>${esc(t("fits"))}</th><th>${esc(t("stock"))}</th><th>${esc(t("lead"))}</th><th>${esc(t("price"))}</th><th>${esc(t("crit"))}</th></tr></thead>
+  <tbody id="ptb">${rows.map(p=>`<tr><td class="mono">${esc(p.pn)}</td><td>${esc(p.n)}<div class="small muted">${esc(p.mfr)}</div></td><td>${esc(catName(p.cat))}</td><td class="small">${esc(p.fits.join(", "))}</td><td>${stockChip(p)}</td><td class="num">${p.lead} ${esc(t("days"))}</td><td class="num">$${p.price.toFixed(2)}</td><td><span class="chip ${p.crit==="critical"?"bad":p.crit==="high"?"warn":""}">${esc(p.crit)}</span></td></tr>`).join("")}</tbody></table></div></section>`;
+}
+function adviceHtml(a,stockChip){
+  const recs=(a.recommendations||[]).map(r=>({...r,p:PARTS.find(p=>p.pn===r.pn)})).filter(r=>r.p);
+  return `${recs.length?`<div class="tbl"><table><thead><tr><th>${esc(t("pn"))}</th><th>${esc(t("part"))}</th><th>${esc(t("qty"))}</th><th>${esc(t("stock"))}</th><th>${esc(t("why"))}</th></tr></thead><tbody>${recs.map(r=>`<tr><td class="mono">${esc(r.pn)}</td><td>${esc(r.p.n)}</td><td class="num">${esc(r.qty||1)}</td><td>${stockChip(r.p)}</td><td class="small">${esc(r.reason)}</td></tr>`).join("")}</tbody></table></div>`:""}
+  ${(a.also||[]).length?`<p class="label" style="margin-top:12px">${esc(t("also"))}</p><ul style="margin:4px 0;padding-inline-start:1.2em">${a.also.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:""}
+  ${a.notes?`<div class="md small" style="margin-top:8px">${md(a.notes)}</div>`:""}`;
+}
+after.parts=()=>{const q=$("#pq"),c=$("#pcat");const upd=()=>{S.partsQ=q.value;S.partsCat=c.value;const pos=q.selectionStart;renderView();const n=$("#pq");n.focus();try{n.setSelectionRange(pos,pos)}catch{}};q.oninput=upd;c.onchange=upd};
+async function advise(){
+  S.advCat=$("#advCat").value;S.advQ=$("#advQ").value.trim();if(!S.advQ)return;S.advice={loading:true};renderView();
+  try{
+    const r=await ai(`You are a spare-parts advisor for electrical maintenance. Recommend parts from the catalogue for the task or symptom. Only use part numbers that exist in the catalogue; put anything else that may be needed (consumables, parts not stocked) in "also". Prefer parts that fit the equipment. Mention stock or lead-time risks in notes.\nEquipment type: ${S.advCat}\nTask or symptom: ${S.advQ}\nEquipment register: ${JSON.stringify(EQUIPMENT.map(e=>({tag:e.tag,name:e.n,cat:e.cat,model:e.mfr+" "+e.model})))}\nCatalogue: ${JSON.stringify(PARTS.map(p=>({pn:p.pn,name:p.n,cat:p.cat,fits:p.fits,stock:p.stock,min:p.min,lead_days:p.lead})))}\nWrite text in ${LANGNAME[S.lang]}.\nReturn JSON only: {"recommendations":[{"pn":"","qty":1,"reason":""}],"also":[""],"notes":"short Markdown"}`,{json:true});
+    S.advice=r||{};
+  }catch(e){S.advice=null;toast(errMsg(e))}
+  renderView();
+}
+
+/* ---------- knowledge base ---------- */
+function vKb(){
+  const docs=[...KB_BUILTIN.map(d=>({id:d.id,title:d.title,builtin:true,chars:d.text.length})),...S.kb];
+  const res=S.kbQ?searchKb(S.kbQ,8):null;
+  return head(t("nav_kb"),t("kb_sub"))+`
+  <div class="panel stack"><div class="row"><input class="i" id="kbq" style="flex:1 1 260px" placeholder="${esc(t("kb_search_ph"))}" value="${esc(S.kbQ)}"><button class="btn primary" data-act="kb-search">${esc(t("search"))}</button></div>
+   <div id="kbres">${res?(res.length?`<div class="list">${res.map(r=>`<div class="item" style="align-items:flex-start"><div class="t"><b>${esc(r.title)}</b><p class="small muted" style="margin-top:4px">${highlight(r.text.slice(0,420),S.kbQ)}…</p></div><button class="btn sm" data-kbdoc="${esc(r.doc)}">${esc(t("open"))}</button></div>`).join("")}</div><div style="margin-top:10px"><button class="btn" data-act="kb-ask" ${sample?"":"disabled"}>${ic("chat")}${esc(t("ask_ai"))}</button></div>`:`<p class="muted">${esc(t("no_results"))}</p>`):""}</div></div>
+  ${db&&S.canWrite?`<div class="drop" id="drop" tabindex="0" role="button">${ic("plus","")}<p>${esc(t("drop"))}</p><input type="file" id="kbfile" multiple accept=".pdf,.txt,.md,text/plain,application/pdf" hidden></div><div id="upStatus" class="small muted"></div>`:`<div class="notice">${esc(db?t("viewer_only"):t("data_off"))}</div>`}
+  <section class="stack"><h2>${esc(t("kb_docs"))}</h2><div class="panel"><div class="list">${docs.map(d=>`<div class="item"><div class="t"><b>${esc(d.title)}</b><div class="small muted">${d.builtin?`<span class="chip acc">${esc(t("builtin"))}</span>`:`<span class="chip">${esc(t("uploaded"))}</span> ${esc(d.byName||"")} · ${fmtDate(d.at)} · ${d.n||0} ${esc(t("chunks"))}`}</div></div><button class="btn sm" data-kbdoc="${esc(d.id)}">${esc(t("open"))}</button></div>`).join("")}</div></div></section>
+  <div id="kbview"></div>`;
+}
+after.kb=()=>{
+  const q=$("#kbq");q.addEventListener("keydown",e=>{if(e.key==="Enter"){S.kbQ=q.value;loadChunks().then(renderView)}});
+  const drop=$("#drop"),f=$("#kbfile");if(!drop)return;
+  drop.onclick=()=>f.click();drop.onkeydown=e=>{if(e.key==="Enter"||e.key===" ")f.click()};
+  drop.ondragover=e=>{e.preventDefault();drop.classList.add("over")};drop.ondragleave=()=>drop.classList.remove("over");
+  drop.ondrop=e=>{e.preventDefault();drop.classList.remove("over");uploadFiles(e.dataTransfer.files)};f.onchange=()=>uploadFiles(f.files);
+};
+async function extractText(file){
+  if(/\.pdf$/i.test(file.name)||file.type==="application/pdf"){
+    if(!window.pdfjsLib)throw {message:"PDF reader unavailable"};
+    pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+    const pdf=await pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer())}).promise;let out="";
+    for(let p=1;p<=pdf.numPages;p++){const c=await (await pdf.getPage(p)).getTextContent();out+=`\n[p.${p}] `+c.items.map(i=>i.str+(i.hasEOL?"\n":" ")).join("")}
+    return out;
+  }
+  return await file.text();
+}
+async function uploadFiles(files){
+  const st=$("#upStatus");
+  for(const file of files){
+    try{
+      st.textContent=`${t("reading_file")} ${file.name}…`;
+      const text=(await extractText(file)).trim();if(text.length<20)throw {message:"no readable text (scanned PDF?)"};
+      const chunks=chunkText(text).slice(0,300);const id="d"+Date.now().toString(36)+uidShort().slice(0,4);const title=file.name.replace(/\.(pdf|txt|md)$/i,"");
+      await db.doc("ea_kb/"+id).set({id,title,n:chunks.length,chars:text.length,by:S.uid,byName:S.name,at:Date.now()});
+      for(let i=0;i<chunks.length;i++){st.textContent=`${t("uploading")} ${file.name} ${i+1}/${chunks.length}`;await db.doc(`ea_kbchunks/${id}_${i}`).set({doc:id,title,n:i,text:chunks[i]})}
+      S.chunks=null;toast(`${t("saved")}: ${title}`);
+    }catch(e){toast(`${file.name}: ${errMsg(e)}`)}
+  }
+  st.textContent="";
+}
+async function openKbDoc(id){
+  const b=KB_BUILTIN.find(d=>d.id===id);let title,text;
+  if(b){title=b.title;text=b.text}else{await loadChunks();const cs=(S.chunks||[]).filter(c=>c.doc===id).sort((a,b)=>a.n-b.n);title=cs[0]?.title||S.kb.find(d=>d.id===id)?.title||"";text=cs.map((c,i)=>i?c.text.slice(200):c.text).join("")}
+  if(S.view!=="kb"){S.view="kb";renderShell()}
+  const doc=S.kb.find(d=>d.id===id);const canDel=doc&&(S.isAdmin||doc.by===S.uid);
+  $("#kbview").innerHTML=`<div class="panel stack" id="kbpanel"><div class="spread"><h3 style="margin:0">${esc(title)}</h3><div class="row">${canDel?`<span id="kbDelZone"><button class="btn danger sm" data-kbdel="${esc(id)}">${esc(t("delete"))}</button></span>`:""}<button class="btn sm" data-act="kb-close">${esc(t("close"))}</button></div></div><div style="white-space:pre-wrap;max-height:520px;overflow:auto;font-size:.92rem">${S.kbQ?highlight(text,S.kbQ):esc(text)}</div></div>`;
+  $("#kbpanel").scrollIntoView({behavior:"smooth",block:"start"});
+}
+async function kbDelete(id){
+  try{await loadChunks();const cs=(S.chunks||[]).filter(c=>c.doc===id);for(const c of cs)await db.doc(`ea_kbchunks/${id}_${c.n}`).delete();await db.doc("ea_kb/"+id).delete();S.chunks=null;$("#kbview").innerHTML="";toast(t("saved"))}catch(e){toast(errMsg(e))}
+}
+
+/* ---------- admin ---------- */
+function vAdmin(){
+  if(!S.isAdmin)return head(t("nav_admin"),t("admin_sub"))+`<div class="notice">${esc(t("admin_only"))}</div>`;
+  const low=PARTS.filter(p=>p.stock<=p.min);const byType=RTYPES.map(x=>[x,S.reports.filter(r=>r.type===x).length]);const max=Math.max(1,...byType.map(x=>x[1]));
+  return head(t("nav_admin"),t("admin_sub"))+`
+  <div class="panel stack"><h3 style="margin:0">AI connection</h3>
+   <p class="small muted">Status: ${sample?'<span class="chip ok">Connected</span>':'<span class="chip warn">Not connected</span>'}. The Anthropic key lives on your private AI server (a free Cloudflare Worker), never in this page or the database. Set it up once with the <a href="https://github.com/AinEbel/electrical-unit/blob/main/assistant/worker/SETUP.md" target="_blank" rel="noopener" style="color:var(--accent)">AI server guide</a>, then paste the server address here.</p>
+   <div class="row" style="align-items:flex-end"><label class="f" style="flex:2 1 280px">AI server address<input class="i" id="aiProxy" type="url" placeholder="https://electrical-assistant-ai.yourname.workers.dev" value="${esc(aiCfg.proxy||"")}"></label><button class="btn primary" id="aiKeyBtn">${esc(t("save"))}</button><button class="btn" id="aiTest" ${sample?"":"disabled"}>Test</button></div></div>
+  <details class="panel"><summary><b>Firestore rules for this page</b> <span class="small muted">(paste once in the Firebase console, inside match /databases/{database}/documents)</span></summary><pre class="mono small" id="rulesTxt" style="white-space:pre-wrap;margin:10px 0">${esc(RULES)}</pre><button class="btn sm" id="rulesCopy">${ic("copy")}${esc(t("copy"))}</button></details>
+  <div class="grid g4"><div class="panel stat"><span class="label">${esc(t("team"))}</span><b>${S.team.length}</b></div><div class="panel stat"><span class="label">${esc(t("reports_total"))}</span><b>${S.reports.length}</b></div><div class="panel stat"><span class="label">${esc(t("kb_docs"))}</span><b>${S.kb.length+KB_BUILTIN.length}</b></div><div class="panel stat"><span class="label">${esc(t("stock_alerts"))}</span><b>${low.length}</b></div></div>
+  <section class="stack"><h2>${esc(t("team"))}</h2><div class="tbl"><table><thead><tr><th>${esc(t("person"))}</th><th>${esc(t("level"))}</th><th>${esc(t("xp"))}</th><th>${esc(t("lessons_done"))}</th><th>${esc(t("certs"))}</th><th>${esc(t("nav_sim"))}</th><th>${esc(t("last_active"))}</th></tr></thead><tbody id="teamBody">${S.team.length?S.team.map(m=>`<tr><td>${esc(m.name||m.email||"—")}</td><td><span class="chip acc">${esc(t("lv_"+(m.level||"beginner")))}</span></td><td class="num">${m.xp||0}</td><td class="num">${m.lessons||0}</td><td class="small">${esc((m.certs||[]).join(", "))||"—"}</td><td class="num">${m.sims||0}</td><td>${fmtDate(m.at)}</td></tr>`).join(""):`<tr><td colspan="7" class="muted">${esc(t("none_yet"))}</td></tr>`}</tbody></table></div></section>
+  <div class="grid g2"><div class="panel"><h3>${esc(t("reports_total"))}</h3><div class="stack">${byType.map(([x,n])=>`<div><div class="spread small"><span>${esc(t("t_"+x))}</span><span class="mono">${n}</span></div><div class="bar"><i style="width:${n/max*100}%"></i></div></div>`).join("")}</div></div>
+  <div class="panel"><h3>${esc(t("stock_alerts"))}</h3><div class="list">${low.map(p=>`<div class="item"><div class="t"><span class="mono small">${esc(p.pn)}</span> ${esc(p.n)}</div><span class="chip ${p.stock?"warn":"bad"}">${p.stock}/${p.min} · ${p.lead} ${esc(t("days"))}</span></div>`).join("")||`<p class="muted">${esc(t("none_yet"))}</p>`}</div></div></div>`;
+}
+after.admin=()=>{const b=$("#aiKeyBtn");if(b)b.onclick=async()=>{const u=$("#aiProxy").value.trim().replace(/\/+$/,"");if(!/^https:\/\/[^\s]+$/.test(u)){toast("Paste the https:// address of your AI server");return}try{await db.doc("ea_config/ai").set({proxy:u,by:S.email,at:Date.now()});aiCfg={proxy:u};sample=makeSample();toast(t("saved"));renderShell()}catch(e){toast(e.code==="permission-denied"?RULES_MSG:errMsg(e))}};const tb=$("#aiTest");if(tb)tb.onclick=async()=>{tb.disabled=true;try{const r=await ai("Reply with the single word OK.");toast("AI server answered: "+r.slice(0,40))}catch(e){toast(errMsg(e))}tb.disabled=false};const c=$("#rulesCopy");if(c)c.onclick=()=>{navigator.clipboard?.writeText($("#rulesTxt").textContent).then(()=>toast(t("copied")),()=>{})}};
+
+/* ---------- events ---------- */
+document.addEventListener("click",e=>{
+  const el=e.target.closest("button,[data-go]");if(!el)return;const d=el.dataset;
+  if(d.go)return go(d.go);
+  if(d.openCourse){S.course=d.openCourse;S.lesson=null;return go("train")}
+  if(d.lesson!=null&&S.course){return openLesson(+d.lesson)}
+  if(d.quizCourse){S.qcourse=d.quizCourse;S.quiz=null;return go("exam")}
+  if(d.mode){S.mode=d.mode;document.querySelectorAll("[data-mode]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.mode===S.mode));return}
+  if(d.suggest){$("#q").value=t("suggest"+d.suggest);return sendChat()}
+  if(d.speak!=null)return speak(S.chat[+d.speak].content);
+  if(d.speakLesson)return speak(S.lesson?.md||"");
+  if(d.copy!=null){const txt=S.chat[+d.copy].content;navigator.clipboard?.writeText(txt).then(()=>toast(t("copied")),()=>toast(t("err")));return}
+  if(d.kbdoc)return openKbDoc(d.kbdoc);
+  if(d.kbdel){$("#kbDelZone").innerHTML=`<span class="small">${esc(t("confirm_delete"))}</span> <button class="btn danger sm" data-kbdelyes="${esc(d.kbdel)}">${esc(t("yes"))}</button>`;return}
+  if(d.kbdelyes)return kbDelete(d.kbdelyes);
+  if(d.qmode){S.qmode=d.qmode;document.querySelectorAll("[data-qmode]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.qmode===S.qmode));return}
+  if(d.cert){const c=S.st.certs.find(x=>x.code===d.cert)||S.quiz?.cert;return c&&exportCert(c)}
+  if(d.simcat){S.simCat=d.simcat;document.querySelectorAll("[data-simcat]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.simcat===S.simCat));return}
+  if(d.simdiff){S.simDiff=d.simdiff;document.querySelectorAll("[data-simdiff]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.simdiff===S.simDiff));return}
+  if(d.simq)return simDo(t(d.simq));
+  if(d.repf){S.repFilter=d.repf;return renderView()}
+  if(d.rep){const r=S.reports.find(x=>x.id===d.rep);S.editing={...r};S.view="rep";return renderShell()}
+  const A={
+    "new-chat":()=>{S.chat=[];renderView()},send:sendChat,mic:()=>listen($("#q")),"mic-notes":()=>listen($("#repNotes")),
+    "back-train":()=>{S.course=null;renderView()},"back-course":()=>{S.lesson=null;renderView()},
+    "lesson-done":()=>{const p=S.st.progress[S.course]||[];if(!p.includes(S.lesson.i)){p.push(S.lesson.i);S.st.progress[S.course]=p;addXp(10)}renderView()},
+    "lesson-redo":()=>openLesson(S.lesson.i,true),
+    "lesson-pdf":()=>{const c=COURSES.find(x=>x.id===S.course);exportDoc(`lesson-${c.id}-${S.lesson.i+1}`,c.ls[S.lesson.i],[`${c.t} · ${c.lv}`],[["",S.lesson.md.replace(/<\/?(details|summary)>/g,"").replace(/^#+\s*/gm,"")]])},
+    plan:makePlan,"gen-quiz":genQuiz,grade,
+    "sim-start":simStart,"sim-do":()=>simDo(),"sim-diag":simDiag,
+    "rep-new":()=>{S.editing={type:"preventive",status:"open",date:new Date().toISOString().slice(0,10)};renderView()},"rep-back":()=>{S.editing=null;renderView()},
+    "rep-draft":repDraft,"rep-save":repSave,"rep-pdf":repPdf,
+    "rep-del":()=>{$("#delZone").innerHTML=`<span class="small">${esc(t("confirm_delete"))}</span> <button class="btn danger" data-act="rep-del-yes">${esc(t("yes"))}</button>`},
+    "rep-del-yes":async()=>{try{await db.doc("ea_reports/"+S.editing.id).delete();S.editing=null;renderView()}catch(e){toast(errMsg(e))}},
+    advise,"kb-search":async()=>{S.kbQ=$("#kbq").value;await loadChunks();renderView()},
+    signout:()=>fauth.signOut(),"kb-ask":()=>{S.pendingQ=S.kbQ;go("chat")},"kb-close":()=>{$("#kbview").innerHTML=""}
+  };
+  if(d.act&&A[d.act])A[d.act]();
+});
+document.addEventListener("change",e=>{if(e.target.id==="lang"){S.lang=e.target.value;store.set("lang",S.lang);S.lesson=null;renderShell()}});
+
+/* ---------- boot (GitHub Pages + Firebase) ---------- */
+const MODEL="claude-sonnet-5-5";
+const OWNER=String(window.EU_CONFIG.ownerEmail||"").toLowerCase();
+const RULES=`// Electrical Assistant
+function eaMember() { return request.auth != null && request.auth.token.email_verified
+  && exists(/databases/$(database)/documents/team/$(request.auth.token.email.lower())); }
+function eaOwner() { return request.auth != null && request.auth.token.email_verified
+  && request.auth.token.email.lower() == '${OWNER}'; }
+match /ea_config/{d} { allow read: if eaMember() || eaOwner(); allow write: if eaOwner(); }
+match /ea_users/{uid} { allow read, write: if request.auth != null && request.auth.uid == uid; }
+match /ea_progress/{uid} { allow read: if eaMember() || eaOwner(); allow write: if request.auth != null && request.auth.uid == uid; }
+match /ea_reports/{d} { allow read, write: if eaMember() || eaOwner(); }
+match /ea_kb/{d} { allow read, write: if eaMember() || eaOwner(); }
+match /ea_kbchunks/{d} { allow read, write: if eaMember() || eaOwner(); }
+match /ea_lessons/{d} { allow read, write: if eaMember() || eaOwner(); }`;
+const RULES_MSG="The database refused this. Paste the Electrical Assistant rules (Admin page) into the Firestore rules.";
+let aiCfg={};
+function makeSample(){
+  async function call(input,o={}){
+    const messages=typeof input==="string"?[{role:"user",content:input}]:input;
+    const token=await fauth.currentUser.getIdToken();
+    const res=await fetch(aiCfg.proxy,{method:"POST",signal:o.signal,headers:{"content-type":"application/json",authorization:"Bearer "+token},body:JSON.stringify({model:MODEL,max_tokens:8000,stream:true,messages})});
+    if(!res.ok){let m="HTTP "+res.status;try{const j=await res.json();m=(j.error&&j.error.message)||j.error||m}catch{}throw {code:res.status===429||res.status===529?"rate_limited":"api_error",message:m}}
+    const rd=res.body.getReader(),dec=new TextDecoder();let buf="",text="",stop="";
+    for(;;){const {done,value}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});let k;
+      while((k=buf.indexOf("\n\n"))>=0){const ev=buf.slice(0,k);buf=buf.slice(k+2);
+        for(const line of ev.split("\n")){if(!line.startsWith("data:"))continue;let j;try{j=JSON.parse(line.slice(5))}catch{continue}
+          if(j.type==="content_block_delta"&&j.delta&&j.delta.type==="text_delta"){text+=j.delta.text;o.onText&&o.onText({text,delta:j.delta.text})}
+          else if(j.type==="message_delta"&&j.delta)stop=j.delta.stop_reason||stop;
+          else if(j.type==="error")throw {code:j.error&&j.error.type==="overloaded_error"?"rate_limited":"api_error",message:j.error&&j.error.message}}}}
+    return {text,truncated:stop==="max_tokens"};
+  }
+  const f=(i,o)=>call(i,o);
+  f.json=async(i,o={})=>{const {text}=await call(i+"\n\nReply with the JSON object only, no code fences or commentary.",{signal:o.signal});
+    const s=text.replace(/```(?:json)?/g,"");const a=s.indexOf("{"),b=s.lastIndexOf("}");try{return JSON.parse(s.slice(a,b+1))}catch{throw {code:"invalid_json",message:"The AI reply was not valid JSON. Try again."}}};
+  return f;
+}
+downloads={save:async({filename,data})=>{const b=data instanceof Blob?data:new Blob([data]);const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),5000);return {status:"saved"}}};
+I18N.en.ai_off="AI features are off until the supervisor connects the AI server on the Admin page. Training content, catalogue and library search still work.";
+I18N.fr.ai_off="Les fonctions IA sont désactivées tant que le superviseur n'a pas connecté le serveur IA (page Administration).";
+I18N.ar.ai_off="ميزات الذكاء الاصطناعي متوقفة حتى يربط المشرف خادم الذكاء الاصطناعي في صفحة الإدارة.";
+const hv=(location.hash||"").slice(1);if(VIEWS.some(v=>v[0]===hv))S.view=hv;
+firebase.initializeApp(window.EU_CONFIG.firebase);
+const fauth=firebase.auth();
+let unsubs=[];
+function gate(msg){
+  document.documentElement.lang=S.lang;document.documentElement.dir=S.lang==="ar"?"rtl":"ltr";
+  $("#app").innerHTML=`<div class="main"><div class="wrap" style="max-width:420px;padding-top:8vh"><div class="brand" style="padding:0"><svg width="34" height="34" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="6" fill="#F2A93B"/><path d="M18 4L8 18h7l-2 10 11-15h-7z" fill="#16232F"/></svg><div><h1 style="font-size:1.7rem">Electrical Assistant</h1><span class="small muted">UNIFIL · Electrical Unit</span></div></div>
+  <form class="panel stack" id="signin"><p class="small muted">Sign in with your Electrical Unit account.</p>
+  <label class="f">Email<input class="i" id="em" type="email" autocomplete="username" required></label>
+  <label class="f">Password<input class="i" id="pw" type="password" autocomplete="current-password" required></label>
+  <button class="btn primary" type="submit">Sign in</button><p class="small" id="gmsg" style="color:var(--bad)">${esc(msg||"")}</p>
+  <p class="small muted">No account yet? Create one in the <a href="../" style="color:var(--accent)">Electrical Unit app</a>, verify your email, then come back.</p></form></div></div>`;
+  $("#signin").onsubmit=async e=>{e.preventDefault();try{await fauth.signInWithEmailAndPassword($("#em").value.trim(),$("#pw").value)}catch(err){$("#gmsg").textContent=err.code==="auth/invalid-credential"||err.code==="auth/wrong-password"?"Wrong email or password.":(err.message||"Sign-in failed.")}};
+}
+fauth.onAuthStateChanged(async u=>{
+  unsubs.forEach(f=>f());unsubs=[];
+  if(!u)return gate("");
+  if(!u.emailVerified)return gate("Verify your email first (check your inbox), then sign in again.");
+  db=firebase.firestore();
+  S.uid=u.uid;S.email=(u.email||"").toLowerCase();S.isAdmin=S.email===OWNER;S.canWrite=true;S.name=u.displayName||"";
+  try{const td=await db.collection("team").doc(S.email).get();if(td.exists){const x=td.data();S.name=x.name||x.displayName||S.name}}catch{}
+  if(!S.name)S.name=S.email.split("@")[0].replace(/[._]/g," ").replace(/\b\w/g,c=>c.toUpperCase());
+  try{const c=await db.doc("ea_config/ai").get();if(c.exists&&c.data().proxy){aiCfg=c.data();sample=makeSample()}}catch(e){console.warn(e)}
+  try{const s=await db.doc(`ea_users/${S.uid}`).get();if(s.exists)S.st={...S.st,...s.data()}}catch(e){console.warn(e)}
+  const denied=e=>{console.warn(e);if(e&&e.code==="permission-denied")toast(RULES_MSG)};
+  unsubs.push(db.collection("ea_reports").orderBy("at","desc").limit(300).onSnapshot(snap=>{S.reports=snap.docs.map(d=>({id:d.id,...d.data()}));if((S.view==="rep"&&!S.editing)||S.view==="dash"||S.view==="admin")renderView()},denied));
+  unsubs.push(db.collection("ea_kb").onSnapshot(snap=>{S.kb=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.at||0)-(a.at||0));S.chunks=null;if(S.view==="kb"&&!$("#kbpanel")&&!$("#upStatus")?.textContent)renderView()},denied));
+  if(S.isAdmin)unsubs.push(db.collection("ea_progress").onSnapshot(snap=>{S.team=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.xp||0)-(a.xp||0));if(S.view==="admin")renderView()},denied));
+  if(S.view==="admin"&&!S.isAdmin)S.view="dash";
+  renderShell();
+});
+
+</script>
+</body></html>
