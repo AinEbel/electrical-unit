@@ -1179,7 +1179,7 @@ async function repDraft(){
 async function repSave(){
   readRepForm();if(!S.canWrite){toast(t("guest_save"));return}const r={...S.editing};if(!r.title){toast(t("title")+" ?");return}
   const data={title:r.title,equipment:r.equipment||"",type:r.type||"preventive",date:r.date||"",site:r.site||"",status:r.status||"open",...Object.fromEntries(RFIELDS.map(k=>[k,r[k]||""])),by:r.by||S.uid,byName:r.byName||S.name,at:r.at||Date.now(),updated:Date.now()};
-  try{if(r.id)await db.doc("ea_reports/"+r.id).set(data);else await db.collection("ea_reports").add(data);toast(t("saved"));S.editing=null;renderView()}catch(e){toast(errMsg(e))}
+  try{if(r.id)await db.doc("ea_reports/"+r.id).set(data);else await db.collection("ea_reports").add(data);toast(t("saved"));S.editing=null;renderView()}catch(e){toast(e&&e.code==="permission-denied"?RULES_MSG:errMsg(e))}
 }
 function repPdf(){readRepForm();const r=S.editing;
   exportDoc(`report-${(r.equipment||"report").split(" ")[0]}-${r.date||""}`,r.title||t("nav_rep"),[`${t("equipment")}: ${r.equipment||"-"}`,`${t("rtype")}: ${t("t_"+(r.type||"preventive"))}   ${t("date")}: ${r.date||"-"}   ${t("site")}: ${r.site||"-"}`,`${t("status")}: ${t(r.status==="closed"?"st_closed":"st_open")}   ${t("by")}: ${r.byName||S.name||"-"}`],RFIELDS.map(k=>[t(k),r[k]]))}
@@ -1346,7 +1346,7 @@ match /ea_reports/{d} { allow read, write: if eaMember() || eaOwner(); }
 match /ea_kb/{d} { allow read, write: if eaMember() || eaOwner(); }
 match /ea_kbchunks/{d} { allow read, write: if eaMember() || eaOwner(); }
 match /ea_lessons/{d} { allow read: if true; allow write: if eaMember() || eaOwner(); }`;
-const RULES_MSG="The database refused this. Paste the Electrical Assistant rules (Admin page) into the Firestore rules.";
+const RULES_MSG="Reports can't be saved yet: the Firestore rules for ea_reports are missing. You can still download the PDF.";
 let aiCfg={};
 function makeSample(){
   async function call(input,o={}){
@@ -1408,10 +1408,8 @@ fauth.onAuthStateChanged(async u=>{
   }
   if(S.canWrite){
     try{const s=await db.doc(`ea_users/${S.uid}`).get();if(s.exists)S.st={...S.st,...s.data()}}catch(e){console.warn(e)}
-    const denied=e=>{console.warn(e);if(e&&e.code==="permission-denied")toast(RULES_MSG)};
+    const denied=e=>console.warn(e);
     unsubs.push(db.collection("ea_reports").orderBy("at","desc").limit(300).onSnapshot(snap=>{S.reports=snap.docs.map(d=>({id:d.id,...d.data()}));if(S.view==="rep"&&!S.editing)renderView()},denied));
-    unsubs.push(db.collection("ea_kb").onSnapshot(snap=>{S.kb=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.at||0)-(a.at||0));S.chunks=null;if(S.view==="kb"&&!$("#kbpanel")&&!$("#upStatus")?.textContent)renderView()},denied));
-    if(S.isAdmin)unsubs.push(db.collection("ea_progress").onSnapshot(snap=>{S.team=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.xp||0)-(a.xp||0));if(S.view==="admin")renderView()},denied));
   }else{
     S.st={xp:0,progress:{},certs:[],attempts:[],sims:[],plan:null,...store.get("guest_state",{})};
   }
