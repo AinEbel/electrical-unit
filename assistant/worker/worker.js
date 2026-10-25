@@ -1,12 +1,14 @@
 // Electrical Assistant AI server (Cloudflare Worker).
-// Holds the Anthropic API key as a secret and only answers signed-in,
-// email-verified members of the Electrical Unit team.
+// Holds the Anthropic API key as a secret. Signed-in Electrical Unit team
+// members are unlimited; guests get a daily number of AI requests each.
 //
 // Secrets / variables to set in Cloudflare (Settings > Variables and Secrets):
 //   ANTHROPIC_API_KEY  (secret)  your key from console.anthropic.com
 // Optional variables:
 //   ALLOWED_ORIGIN     default https://ainebel.github.io
 //   OWNER_EMAIL        default farah12@un.org
+//   GUEST_DAILY_LIMIT  AI requests per guest per day, default 30 (0 = guests off)
+// Optional KV binding LIMITS makes the guest limit exact across Cloudflare servers.
 
 const PROJECT_ID = "electrical-unit";
 const MODELS = ["claude-sonnet-5-5"];
@@ -78,19 +80,45 @@ async function isMember(token, email) {
   return res.ok;
 }
 
+const memoryCounts = new Map();
+
+// Counts a guest request; returns false once the daily limit is reached.
+async function guestAllowed(env, ip) {
+  const limit = Number(env.GUEST_DAILY_LIMIT ?? 30);
+  if (limit <= 0) return false;
+  const key = new Date().toISOString().slice(0, 10) + ":" + ip;
+  if (env.LIMITS) {
+    const n = Number((await env.LIMITS.get(key)) || 0);
+    if (n >= limit) return false;
+    await env.LIMITS.put(key, String(n + 1), { expirationTtl: 172800 });
+    return true;
+  }
+  if (memoryCounts.size > 5000) memoryCounts.clear();
+  const n = memoryCounts.get(key) || 0;
+  if (n >= limit) return false;
+  memoryCounts.set(key, n + 1);
+  return true;
+}
+
 export default {
   async fetch(request, env) {
     if (request.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(env) });
     if (request.method !== "POST") return fail(env, 405, "Use POST.");
     if (!env.ANTHROPIC_API_KEY) return fail(env, 500, "The AI server has no ANTHROPIC_API_KEY secret yet.");
 
+    const origin = request.headers.get("origin");
+    if (origin && origin !== (env.ALLOWED_ORIGIN || "https://ainebel.github.io")) return fail(env, 403, "Not allowed from this site.");
+
     const token = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
-    const claims = token && (await verifyIdToken(token).catch(() => null));
-    if (!claims) return fail(env, 401, "Sign in again to use the AI features.");
-    const email = claims.email.toLowerCase();
+    const claims = token ? await verifyIdToken(token).catch(() => null) : null;
+    const email = claims ? claims.email.toLowerCase() : "";
     const owner = (env.OWNER_EMAIL || "farah12@un.org").toLowerCase();
-    if (email !== owner && !(await isMember(token, email))) {
-      return fail(env, 403, "Your account is not on the Electrical Unit team yet. Ask the supervisor to add you.");
+    const member = !!claims && (email === owner || (await isMember(token, email)));
+    if (!member) {
+      const ip = request.headers.get("cf-connecting-ip") || "unknown";
+      if (!(await guestAllowed(env, ip))) {
+        return fail(env, 429, "The daily AI limit for guests is used up. Try again tomorrow, or sign in as a team member.");
+      }
     }
 
     let body;
@@ -109,7 +137,7 @@ export default {
         max_tokens: Math.min(Number(body.max_tokens) || MAX_TOKENS, MAX_TOKENS),
         stream: body.stream !== false,
         messages: body.messages,
-        metadata: { user_id: claims.sub },
+        metadata: { user_id: claims ? claims.sub : "guest" },
       }),
     });
 

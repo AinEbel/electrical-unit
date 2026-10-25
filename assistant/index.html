@@ -438,7 +438,7 @@ function levelOf(xp){let i=0;XP_AT.forEach((v,k)=>{if(xp>=v)i=k});return i}
 function lessonsDone(){return Object.values(S.st.progress).reduce((a,v)=>a+v.length,0)}
 let saveTimer=null;
 function saveState(){
-  if(!db||!S.uid)return;
+  if(!db||!S.uid||!S.canWrite){store.set("guest_state",S.st);return}
   clearTimeout(saveTimer);
   saveTimer=setTimeout(async()=>{
     try{
@@ -473,7 +473,7 @@ function allChunks(){
   return builtinChunks.concat(S.chunks||[]);
 }
 async function loadChunks(){
-  if(!db||S.chunks)return;
+  if(S.chunks)return;if(!db||!S.canWrite){S.chunks=[];return}
   try{const snap=await db.collection("ea_kbchunks").get();S.chunks=snap.docs.map(d=>d.data())}catch(e){S.chunks=[]}
 }
 function searchKb(q,k=5){
@@ -551,7 +551,7 @@ function renderShell(){
     <div class="brand"><svg width="30" height="30" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="6" fill="#F2A93B"/><path d="M18 4L8 18h7l-2 10 11-15h-7z" fill="#16232F"/></svg><div><b>Electrical Assistant</b><span>${esc(t("tagline"))}</span></div></div>
     <nav class="nav" aria-label="Sections">${VIEWS.filter(([v])=>v!=="admin"||S.isAdmin).map(([v,k])=>`<button data-go="${v}" ${S.view===v?'aria-current="page"':""}>${ic(v)}<span>${esc(t(k))}</span></button>`).join("")}</nav>
     <div class="rail-foot">
-      <span class="who small">${esc(S.name)}</span><a class="who small" href="../" style="color:var(--rail-ink)">← Electrical Unit</a><button class="btn sm" style="background:transparent;color:var(--rail-ink);border-color:rgba(255,255,255,.18)" data-act="signout">Sign out</button>
+      <span class="who small">${esc(S.name)}</span>${S.uid?`<button class="btn sm" style="background:transparent;color:var(--rail-ink);border-color:rgba(255,255,255,.18)" data-act="signout">${esc(t("sign_out"))}</button>`:`<button class="btn sm" style="background:transparent;color:var(--rail-ink);border-color:rgba(255,255,255,.18)" data-go="signin">${esc(t("team_signin"))}</button>`}
       <select id="lang" aria-label="${esc(t("language"))}"><option value="en">English</option><option value="fr">Français</option><option value="ar">العربية</option></select>
     </div>
   </aside>
@@ -562,14 +562,14 @@ function renderShell(){
 function go(v){S.view=v;document.querySelectorAll(".nav button").forEach(b=>b.toggleAttribute("aria-current",b.dataset.go===v)||b.dataset.go===v&&b.setAttribute("aria-current","page"));renderView();window.scrollTo(0,0);try{history.replaceState(null,"","#"+v)}catch{}}
 function renderView(){
   const m=$("#main");if(!m)return;
-  const fn={dash:vDash,chat:vChat,train:vTrain,exam:vExam,sim:vSim,rep:vRep,parts:vParts,kb:vKb,admin:vAdmin}[S.view]||vDash;
+  const fn={signin:vSignin,dash:vDash,chat:vChat,train:vTrain,exam:vExam,sim:vSim,rep:vRep,parts:vParts,kb:vKb,admin:vAdmin}[S.view]||vDash;
   m.innerHTML=`<div class="wrap">${fn()}</div>`;
   after[S.view]?.();
 }
 const after={};
 const head=(title,sub,right="")=>`<div class="head"><div><h1>${esc(title)}</h1><p>${esc(sub)}</p></div>${right}</div>`;
 const aiNotice=()=>sample?"":`<div class="notice">${esc(t("ai_off"))}</div>`;
-const dataNotice=()=>db&&S.uid?"":`<div class="notice">${esc(t("data_off"))}</div>`;
+const dataNotice=()=>S.canWrite?"":`<div class="notice">${esc(t("data_off"))}</div>`;
 
 /* ---------- dashboard ---------- */
 function vDash(){
@@ -812,7 +812,7 @@ function reportList(list){
 function vRep(){
   if(S.editing)return vRepEdit();
   const list=S.reports.filter(r=>S.repFilter==="all"||r.status===S.repFilter);
-  return head(t("nav_rep"),t("rep_sub"),`<button class="btn primary" data-act="rep-new" ${db&&S.canWrite?"":"disabled"}>${ic("plus")}${esc(t("new_report"))}</button>`)+dataNotice()+`
+  return head(t("nav_rep"),t("rep_sub"),`<button class="btn primary" data-act="rep-new">${ic("plus")}${esc(t("new_report"))}</button>`)+dataNotice()+`
   <div class="seg" role="group">${["all","open","closed"].map(f=>`<button data-repf="${f}" aria-pressed="${S.repFilter===f}">${esc(f==="all"?t("all"):t("st_"+f))}</button>`).join("")}</div>
   <div class="panel" id="repList">${reportList(list)}</div>`;
 }
@@ -844,7 +844,7 @@ async function repDraft(){
   }catch(e){toast(errMsg(e));b.disabled=false;b.textContent=t("draft")}
 }
 async function repSave(){
-  readRepForm();const r={...S.editing};if(!r.title){toast(t("title")+" ?");return}
+  readRepForm();if(!S.canWrite){toast(t("guest_save"));return}const r={...S.editing};if(!r.title){toast(t("title")+" ?");return}
   const data={title:r.title,equipment:r.equipment||"",type:r.type||"preventive",date:r.date||"",site:r.site||"",status:r.status||"open",...Object.fromEntries(RFIELDS.map(k=>[k,r[k]||""])),by:r.by||S.uid,byName:r.byName||S.name,at:r.at||Date.now(),updated:Date.now()};
   try{if(r.id)await db.doc("ea_reports/"+r.id).set(data);else await db.collection("ea_reports").add(data);toast(t("saved"));S.editing=null;renderView()}catch(e){toast(errMsg(e))}
 }
@@ -889,7 +889,7 @@ function vKb(){
   return head(t("nav_kb"),t("kb_sub"))+`
   <div class="panel stack"><div class="row"><input class="i" id="kbq" style="flex:1 1 260px" placeholder="${esc(t("kb_search_ph"))}" value="${esc(S.kbQ)}"><button class="btn primary" data-act="kb-search">${esc(t("search"))}</button></div>
    <div id="kbres">${res?(res.length?`<div class="list">${res.map(r=>`<div class="item" style="align-items:flex-start"><div class="t"><b>${esc(r.title)}</b><p class="small muted" style="margin-top:4px">${highlight(r.text.slice(0,420),S.kbQ)}…</p></div><button class="btn sm" data-kbdoc="${esc(r.doc)}">${esc(t("open"))}</button></div>`).join("")}</div><div style="margin-top:10px"><button class="btn" data-act="kb-ask" ${sample?"":"disabled"}>${ic("chat")}${esc(t("ask_ai"))}</button></div>`:`<p class="muted">${esc(t("no_results"))}</p>`):""}</div></div>
-  ${db&&S.canWrite?`<div class="drop" id="drop" tabindex="0" role="button">${ic("plus","")}<p>${esc(t("drop"))}</p><input type="file" id="kbfile" multiple accept=".pdf,.txt,.md,text/plain,application/pdf" hidden></div><div id="upStatus" class="small muted"></div>`:`<div class="notice">${esc(db?t("viewer_only"):t("data_off"))}</div>`}
+  ${db&&S.canWrite?`<div class="drop" id="drop" tabindex="0" role="button">${ic("plus","")}<p>${esc(t("drop"))}</p><input type="file" id="kbfile" multiple accept=".pdf,.txt,.md,text/plain,application/pdf" hidden></div><div id="upStatus" class="small muted"></div>`:`<div class="notice">${esc(t("guest_kb"))}</div>`}
   <section class="stack"><h2>${esc(t("kb_docs"))}</h2><div class="panel"><div class="list">${docs.map(d=>`<div class="item"><div class="t"><b>${esc(d.title)}</b><div class="small muted">${d.builtin?`<span class="chip acc">${esc(t("builtin"))}</span>`:`<span class="chip">${esc(t("uploaded"))}</span> ${esc(d.byName||"")} · ${fmtDate(d.at)} · ${d.n||0} ${esc(t("chunks"))}`}</div></div><button class="btn sm" data-kbdoc="${esc(d.id)}">${esc(t("open"))}</button></div>`).join("")}</div></div></section>
   <div id="kbview"></div>`;
 }
@@ -1001,20 +1001,20 @@ function eaMember() { return request.auth != null && request.auth.token.email_ve
   && exists(/databases/$(database)/documents/team/$(request.auth.token.email.lower())); }
 function eaOwner() { return request.auth != null && request.auth.token.email_verified
   && request.auth.token.email.lower() == '${OWNER}'; }
-match /ea_config/{d} { allow read: if eaMember() || eaOwner(); allow write: if eaOwner(); }
+match /ea_config/{d} { allow read: if true; allow write: if eaOwner(); }
 match /ea_users/{uid} { allow read, write: if request.auth != null && request.auth.uid == uid; }
-match /ea_progress/{uid} { allow read: if eaMember() || eaOwner(); allow write: if request.auth != null && request.auth.uid == uid; }
+match /ea_progress/{uid} { allow read: if eaOwner(); allow write: if request.auth != null && request.auth.uid == uid && (eaMember() || eaOwner()); }
 match /ea_reports/{d} { allow read, write: if eaMember() || eaOwner(); }
 match /ea_kb/{d} { allow read, write: if eaMember() || eaOwner(); }
 match /ea_kbchunks/{d} { allow read, write: if eaMember() || eaOwner(); }
-match /ea_lessons/{d} { allow read, write: if eaMember() || eaOwner(); }`;
+match /ea_lessons/{d} { allow read: if true; allow write: if eaMember() || eaOwner(); }`;
 const RULES_MSG="The database refused this. Paste the Electrical Assistant rules (Admin page) into the Firestore rules.";
 let aiCfg={};
 function makeSample(){
   async function call(input,o={}){
     const messages=typeof input==="string"?[{role:"user",content:input}]:input;
-    const token=await fauth.currentUser.getIdToken();
-    const res=await fetch(aiCfg.proxy,{method:"POST",signal:o.signal,headers:{"content-type":"application/json",authorization:"Bearer "+token},body:JSON.stringify({model:MODEL,max_tokens:8000,stream:true,messages})});
+    const hd={"content-type":"application/json"};if(fauth.currentUser)hd.authorization="Bearer "+await fauth.currentUser.getIdToken();
+    const res=await fetch(aiCfg.proxy,{method:"POST",signal:o.signal,headers:hd,body:JSON.stringify({model:MODEL,max_tokens:8000,stream:true,messages})});
     if(!res.ok){let m="HTTP "+res.status;try{const j=await res.json();m=(j.error&&j.error.message)||j.error||m}catch{}throw {code:res.status===429||res.status===529?"rate_limited":"api_error",message:m}}
     const rd=res.body.getReader(),dec=new TextDecoder();let buf="",text="",stop="";
     for(;;){const {done,value}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});let k;
@@ -1034,37 +1034,47 @@ downloads={save:async({filename,data})=>{const b=data instanceof Blob?data:new B
 I18N.en.ai_off="AI features are off until the supervisor connects the AI server on the Admin page. Training content, catalogue and library search still work.";
 I18N.fr.ai_off="Les fonctions IA sont désactivées tant que le superviseur n'a pas connecté le serveur IA (page Administration).";
 I18N.ar.ai_off="ميزات الذكاء الاصطناعي متوقفة حتى يربط المشرف خادم الذكاء الاصطناعي في صفحة الإدارة.";
+Object.assign(I18N.en,{team_signin:"Team sign in",sign_out:"Sign out",signin_sub:"Optional. Team members sign in to share reports and documents and to keep progress across devices.",signin_help:"Accounts are the same as the Electrical Unit app. Create one there, then ask the supervisor to add you to the team:",member_yes:"Team member: shared reports and documents are on.",member_no:"Signed in, but not on the team yet. Ask the supervisor to add you in the Electrical Unit Team tab.",data_off:"You're using the app as a guest. Your progress is saved on this device. Team members can sign in to share reports and documents.",guest_save:"Only signed-in team members can save shared reports. You can still download the PDF.",guest_kb:"Guests can search the built-in procedures. Team members sign in to see and add the team's documents.",ai_off:"The AI features aren't switched on yet. Training content, the catalogue and library search still work."});
+Object.assign(I18N.fr,{team_signin:"Connexion équipe",sign_out:"Se déconnecter",signin_sub:"Facultatif. Les membres de l'équipe se connectent pour partager rapports et documents et retrouver leur progression partout.",signin_help:"Mêmes comptes que l'application Electrical Unit. Créez-en un, puis demandez au superviseur de vous ajouter :",member_yes:"Membre de l'équipe : rapports et documents partagés activés.",member_no:"Connecté, mais pas encore dans l'équipe. Demandez au superviseur de vous ajouter.",data_off:"Vous utilisez l'application en invité. Votre progression est enregistrée sur cet appareil. Les membres de l'équipe peuvent se connecter pour partager rapports et documents.",guest_save:"Seuls les membres connectés peuvent enregistrer des rapports partagés. Vous pouvez toujours télécharger le PDF.",guest_kb:"Les invités peuvent chercher dans les procédures intégrées. Les membres se connectent pour voir et ajouter les documents de l'équipe.",ai_off:"Les fonctions IA ne sont pas encore activées. Les cours, le catalogue et la recherche restent disponibles."});
+Object.assign(I18N.ar,{team_signin:"دخول الفريق",sign_out:"تسجيل الخروج",signin_sub:"اختياري. يسجّل أعضاء الفريق الدخول لمشاركة التقارير والمستندات وحفظ التقدّم على كل الأجهزة.",signin_help:"الحسابات نفسها في تطبيق Electrical Unit. أنشئ حساباً هناك ثم اطلب من المشرف إضافتك:",member_yes:"عضو في الفريق: التقارير والمستندات المشتركة مفعّلة.",member_no:"تم تسجيل الدخول لكنك لست في الفريق بعد. اطلب من المشرف إضافتك.",data_off:"أنت تستخدم التطبيق كزائر. يُحفظ تقدّمك على هذا الجهاز. يمكن لأعضاء الفريق تسجيل الدخول لمشاركة التقارير والمستندات.",guest_save:"فقط أعضاء الفريق المسجّلون يمكنهم حفظ التقارير المشتركة. يمكنك تنزيل PDF.",guest_kb:"يمكن للزوار البحث في الإجراءات المدمجة. يسجّل أعضاء الفريق الدخول لرؤية مستندات الفريق وإضافتها.",ai_off:"ميزات الذكاء الاصطناعي غير مفعّلة بعد. الدورات والكتالوج والبحث متاحة."});
 const hv=(location.hash||"").slice(1);if(VIEWS.some(v=>v[0]===hv))S.view=hv;
+S.st={...S.st,...store.get("guest_state",{})};renderShell();
 firebase.initializeApp(window.EU_CONFIG.firebase);
 const fauth=firebase.auth();
 let unsubs=[];
-function gate(msg){
-  document.documentElement.lang=S.lang;document.documentElement.dir=S.lang==="ar"?"rtl":"ltr";
-  $("#app").innerHTML=`<div class="main"><div class="wrap" style="max-width:420px;padding-top:8vh"><div class="brand" style="padding:0"><svg width="34" height="34" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="6" fill="#F2A93B"/><path d="M18 4L8 18h7l-2 10 11-15h-7z" fill="#16232F"/></svg><div><h1 style="font-size:1.7rem">Electrical Assistant</h1><span class="small muted">UNIFIL · Electrical Unit</span></div></div>
-  <form class="panel stack" id="signin"><p class="small muted">Sign in with your Electrical Unit account.</p>
+function vSignin(){
+  if(S.uid)return head(t("team_signin"),"")+`<div class="panel stack"><p>${esc(S.name)} · ${esc(S.email)}</p><p class="small muted">${esc(S.canWrite?t("member_yes"):t("member_no"))}</p><div><button class="btn" data-act="signout">${esc(t("sign_out"))}</button></div></div>`;
+  return head(t("team_signin"),t("signin_sub"))+`<form class="panel stack" id="signin" style="max-width:440px">
   <label class="f">Email<input class="i" id="em" type="email" autocomplete="username" required></label>
   <label class="f">Password<input class="i" id="pw" type="password" autocomplete="current-password" required></label>
-  <button class="btn primary" type="submit">Sign in</button><p class="small" id="gmsg" style="color:var(--bad)">${esc(msg||"")}</p>
-  <p class="small muted">No account yet? Create one in the <a href="../" style="color:var(--accent)">Electrical Unit app</a>, verify your email, then come back.</p></form></div></div>`;
-  $("#signin").onsubmit=async e=>{e.preventDefault();try{await fauth.signInWithEmailAndPassword($("#em").value.trim(),$("#pw").value)}catch(err){$("#gmsg").textContent=err.code==="auth/invalid-credential"||err.code==="auth/wrong-password"?"Wrong email or password.":(err.message||"Sign-in failed.")}};
+  <button class="btn primary" type="submit">${esc(t("team_signin"))}</button><p class="small" id="gmsg" style="color:var(--bad)"></p>
+  <p class="small muted">${esc(t("signin_help"))} <a href="../" style="color:var(--accent)">Electrical Unit</a></p></form>`;
 }
+after.signin=()=>{const f=$("#signin");if(f)f.onsubmit=async e=>{e.preventDefault();try{const c=await fauth.signInWithEmailAndPassword($("#em").value.trim(),$("#pw").value);if(!c.user.emailVerified){$("#gmsg").textContent="Verify your email first (check your inbox), then sign in again.";await fauth.signOut();return}S.view="dash"}catch(err){$("#gmsg").textContent=err.code==="auth/invalid-credential"||err.code==="auth/wrong-password"?"Wrong email or password.":(err.message||"Sign-in failed.")}}};
 fauth.onAuthStateChanged(async u=>{
   unsubs.forEach(f=>f());unsubs=[];
-  if(!u)return gate("");
-  if(!u.emailVerified)return gate("Verify your email first (check your inbox), then sign in again.");
   db=firebase.firestore();
-  S.uid=u.uid;S.email=(u.email||"").toLowerCase();S.isAdmin=S.email===OWNER;S.canWrite=true;S.name=u.displayName||"";
-  try{const td=await db.collection("team").doc(S.email).get();if(td.exists){const x=td.data();S.name=x.name||x.displayName||S.name}}catch{}
-  if(!S.name)S.name=S.email.split("@")[0].replace(/[._]/g," ").replace(/\b\w/g,c=>c.toUpperCase());
+  Object.assign(S,{uid:null,email:"",name:"",isAdmin:false,canWrite:false,reports:[],kb:[],team:[],chunks:null});
   try{const c=await db.doc("ea_config/ai").get();if(c.exists&&c.data().proxy){aiCfg=c.data();sample=makeSample()}}catch(e){console.warn(e)}
-  try{const s=await db.doc(`ea_users/${S.uid}`).get();if(s.exists)S.st={...S.st,...s.data()}}catch(e){console.warn(e)}
-  const denied=e=>{console.warn(e);if(e&&e.code==="permission-denied")toast(RULES_MSG)};
-  unsubs.push(db.collection("ea_reports").orderBy("at","desc").limit(300).onSnapshot(snap=>{S.reports=snap.docs.map(d=>({id:d.id,...d.data()}));if((S.view==="rep"&&!S.editing)||S.view==="dash"||S.view==="admin")renderView()},denied));
-  unsubs.push(db.collection("ea_kb").onSnapshot(snap=>{S.kb=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.at||0)-(a.at||0));S.chunks=null;if(S.view==="kb"&&!$("#kbpanel")&&!$("#upStatus")?.textContent)renderView()},denied));
-  if(S.isAdmin)unsubs.push(db.collection("ea_progress").onSnapshot(snap=>{S.team=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.xp||0)-(a.xp||0));if(S.view==="admin")renderView()},denied));
+  if(u&&u.emailVerified){
+    S.uid=u.uid;S.email=(u.email||"").toLowerCase();S.isAdmin=S.email===OWNER;S.name=u.displayName||"";
+    try{const td=await db.collection("team").doc(S.email).get();if(td.exists){const x=td.data();S.name=x.name||x.displayName||S.name;S.canWrite=true}}catch{}
+    if(S.isAdmin)S.canWrite=true;
+    if(!S.name)S.name=S.email.split("@")[0].replace(/[._]/g," ").replace(/\b\w/g,c=>c.toUpperCase());
+  }
+  if(S.canWrite){
+    try{const s=await db.doc(`ea_users/${S.uid}`).get();if(s.exists)S.st={...S.st,...s.data()}}catch(e){console.warn(e)}
+    const denied=e=>{console.warn(e);if(e&&e.code==="permission-denied")toast(RULES_MSG)};
+    unsubs.push(db.collection("ea_reports").orderBy("at","desc").limit(300).onSnapshot(snap=>{S.reports=snap.docs.map(d=>({id:d.id,...d.data()}));if((S.view==="rep"&&!S.editing)||S.view==="dash"||S.view==="admin")renderView()},denied));
+    unsubs.push(db.collection("ea_kb").onSnapshot(snap=>{S.kb=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.at||0)-(a.at||0));S.chunks=null;if(S.view==="kb"&&!$("#kbpanel")&&!$("#upStatus")?.textContent)renderView()},denied));
+    if(S.isAdmin)unsubs.push(db.collection("ea_progress").onSnapshot(snap=>{S.team=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.xp||0)-(a.xp||0));if(S.view==="admin")renderView()},denied));
+  }else{
+    S.st={xp:0,progress:{},certs:[],attempts:[],sims:[],plan:null,...store.get("guest_state",{})};
+  }
   if(S.view==="admin"&&!S.isAdmin)S.view="dash";
   renderShell();
 });
+
 
 </script>
 </body></html>

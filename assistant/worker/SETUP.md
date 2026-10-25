@@ -1,6 +1,6 @@
 # Electrical Assistant: AI server setup
 
-The AI features run through a small private server, a free Cloudflare Worker. The Anthropic key is stored there as a secret. It never appears in the web page, in GitHub or in the Firebase database. The server only answers people who are signed in with a verified email and are on the Electrical Unit team.
+The AI features run through a small private server, a free Cloudflare Worker. The Anthropic key is stored there as a secret. It never appears in the web page, in GitHub or in the Firebase database. Anyone with the link can use the AI. Guests get a daily number of requests each (30 by default), and signed-in team members are unlimited.
 
 You do this once, and it takes about 10 minutes.
 
@@ -34,7 +34,12 @@ You do this once, and it takes about 10 minutes.
 
 The **Admin** page also shows the Firestore rules for the assistant's data. Copy them into the Firebase console under **Firestore Database**, then **Rules**. Put them inside `match /databases/{database}/documents { ... }`, next to your existing rules, and choose **Publish**.
 
+## Guest limit (optional)
+
+- To change the number of guest requests per day, add a **Variable** named `GUEST_DAILY_LIMIT`, for example `20`. Set it to `0` to allow only team members.
+- For an exact count across Cloudflare's servers, create a **KV namespace** (Workers & Pages, then KV) called `LIMITS`. Bind it to the Worker under **Settings**, then **Bindings**, with the variable name `LIMITS`.
+
 ## Costs and limits
 
-- Each answer is billed to your Anthropic account. You can set a monthly spend limit in the Anthropic console under **Limits**.
+- Each answer is billed to your Anthropic account. Because the link is public, **set a monthly spend limit** in the Anthropic console under **Limits**, for example $20. That caps the cost even if many people use it.
 - To cut off AI access at any time, delete the secret or the Worker. The rest of the app keeps working.
