@@ -407,6 +407,296 @@ Low readings: moisture (dry with space heaters or low-voltage current and retest
 7. Rack in, close, check auxiliary contacts and remote indication, and carry out thermography on load.
 Common faults: breaker will not close (springs not charged, UV release not energised, mechanical interlock, trip unit fault signal), nuisance tripping (wrong settings, earth fault from load, CT wiring).`}
 ];
+/* Built-in fault scenarios, used when the AI server is not connected.
+   check flags: live = needs the equipment energised (panel/meter reading), hands = needs isolation (LOTO) first, key = part of the expert path. */
+const SIMS=[
+{cat:"generator",diff:"easy",title:"Generator cranks but will not start",equipment:"600 kVA 400/230 V diesel genset, 24 V starting system",context:"Weekly no-load test at the HQ generator room. The genset cranks normally for the full crank cycle and then shuts down on 'Fail to start'.",symptoms:["Engine cranks at normal speed","No smoke from the exhaust while cranking","Fuel day tank gauge shows 15%"],alarms:["FAIL TO START"],readings:{"Battery voltage at rest":"25.8 V","Battery voltage while cranking":"21.4 V","Day tank level":"15 %"},
+loto:"Put the controller in OFF, open the battery isolator and lock it",
+checks:[
+{label:"Read the controller event log",live:true,key:true,result:"Three crank attempts of 10 s each, then 'Fail to start'. No low-oil or overspeed events. Speed sensor saw cranking RPM."},
+{label:"Check the day tank and main tank levels",key:true,result:"Day tank is at 15%, below the fuel pick-up tube level marked on the tank (20%). The transfer pump from the main tank shows a tripped overload on its starter."},
+{label:"Inspect the fuel transfer pump starter",hands:true,key:true,result:"Thermal overload tripped. Pump motor turns freely by hand, insulation 200 MΩ. Reset overload, pump runs and fills the day tank to 85%."},
+{label:"Bleed air from the fuel filters",hands:true,key:true,result:"Air bubbles at the secondary filter bleed screw, then solid fuel."},
+{label:"Measure starter motor current",live:true,result:"About 420 A while cranking, normal for this engine."},
+{label:"Check the fuel shut-off solenoid",live:true,result:"Solenoid energises (clicks) on crank. 24 V present at the coil."},
+{label:"Replace the air filter",hands:true,result:"Air filter restriction indicator is in the green. Replacing it has no effect."}],
+options:["Weak starting batteries","Fuel starvation: day tank too low because the transfer pump tripped, with air in the fuel system","Faulty speed sensor","Blocked air filter"],answer:1,
+explain:"The engine cranks at normal speed with healthy battery voltage, so starting power is fine. No smoke means no fuel is being injected. The day tank was below the pick-up level because the transfer pump overload had tripped. After refilling, the fuel system must be bled before the engine will start.",
+ideal:["Read the event log and alarms","Check fuel levels in day and main tanks","Isolate the genset (controller OFF, battery isolator locked)","Investigate and reset the transfer pump, find why it tripped","Bleed the fuel filters","Restore, run a test start and add a low day-tank alarm check to the weekly PM"]},
+{cat:"generator",diff:"medium",title:"Generator voltage collapses when load is applied",equipment:"500 kVA 400/230 V genset with brushless alternator and digital AVR",context:"During the monthly load test the genset reaches 400 V at no load. When the ATS transfers 180 kW of building load, voltage drops to 290 V and the under-voltage alarm trips the generator breaker.",symptoms:["Normal voltage and 50 Hz at no load","Voltage collapses on load, frequency stays at 49.6 Hz","Burnt smell near the alternator terminal box reported last week"],alarms:["GEN UNDER VOLTAGE","GEN CB TRIP"],readings:{"No-load voltage L-L":"401 V","On-load voltage L-L":"290 V","Frequency on load":"49.6 Hz","Excitation field current (no load)":"0.9 A"},
+loto:"Stop the genset, controller in OFF, open the generator breaker and battery isolator, lock and tag",
+checks:[
+{label:"Read the controller event log",live:true,key:true,result:"Under-voltage trips on the last three load tests. Frequency stayed within ±1 Hz, so the engine and governor are coping with the load."},
+{label:"Measure excitation field current on load (with load bank)",live:true,key:true,result:"Field current rises to the AVR maximum of 4.5 A and stays there while voltage stays low. The AVR is demanding full excitation, but the voltage does not respond."},
+{label:"Inspect the rotating diodes on the exciter",hands:true,key:true,result:"One diode of the rotating rectifier reads short-circuit in both directions, another reads open. Discolouration on the diode plate."},
+{label:"Test the surge suppressor (varistor) on the rotating rectifier",hands:true,key:true,result:"Varistor is cracked and carbon-tracked."},
+{label:"Megger the main stator winding",hands:true,result:"Stator insulation 850 MΩ at 1000 V DC. Healthy."},
+{label:"Check the AVR sensing fuses",live:true,result:"Sensing fuses intact, sensing voltage correct on all phases."},
+{label:"Check engine speed and governor",live:true,result:"Speed steady at 1488 rpm on load. Governor responds normally."}],
+options:["Faulty AVR","Failed rotating diodes and surge suppressor on the exciter","Overloaded engine with governor fault","Broken stator winding"],answer:1,
+explain:"The frequency holds, so the engine is not the problem. The AVR drives full field current but the output does not rise, so the excitation is not reaching the main rotor. That points to the rotating rectifier: a shorted diode and a damaged varistor. A healthy AVR with full field current and a good stator confirms it.",
+ideal:["Read the event log: under-voltage with steady frequency","Measure field current on load: AVR at maximum","Isolate and lock out the genset","Test each rotating diode and the varistor","Replace the full diode set and varistor","Run a stepped load bank test and record voltage recovery"]},
+{cat:"ups",diff:"easy",title:"UPS on bypass after a 'Battery test failed' alarm",equipment:"120 kVA online double-conversion UPS, 2 strings of 40 × 12 V VRLA blocks",context:"The data centre UPS ran its automatic monthly battery test overnight. This morning it shows 'Battery test failed' and estimated autonomy dropped from 18 minutes to 4 minutes.",symptoms:["UPS still in normal (inverter) mode","Autonomy estimate 4 min instead of 18 min","Battery room temperature has been 31 °C for weeks"],alarms:["BATTERY TEST FAILED","BATTERY REPLACE"],readings:{"DC bus voltage":"545 V","Float voltage per block (average)":"13.6 V","Battery room temperature":"31 °C","Battery age":"4.5 years"},
+loto:"Open the battery string breakers, lock and tag, and verify zero DC current",
+checks:[
+{label:"Read the UPS event log",live:true,key:true,result:"During the test, string voltage dropped to the end-of-discharge level after 3 minutes at 60% load. Same test passed 6 months ago."},
+{label:"Measure individual block voltages on float",live:true,key:true,result:"Most blocks read 13.5–13.7 V. Blocks 17 and 32 of string 1 read 12.9 V and 14.3 V."},
+{label:"Measure internal resistance of each block",hands:true,key:true,result:"12 blocks show resistance 60–90% above baseline, including blocks 17 and 32. Two blocks are visibly swollen."},
+{label:"Check the battery room air conditioning",key:true,result:"One of the two split units is out of service. Room has been above 30 °C for about 6 weeks."},
+{label:"Replace the rectifier fuses",hands:true,result:"Fuses are healthy. The rectifier works normally."},
+{label:"Check inverter output voltage",live:true,result:"230 V ±1% on all phases. Inverter healthy."}],
+options:["Rectifier fault","Inverter fault","End-of-life VRLA string, accelerated by high room temperature","Wrong autonomy setting in the UPS"],answer:2,
+explain:"The UPS electronics are healthy. The batteries are 4.5 years old and have been kept above 30 °C, which roughly halves VRLA life for every 10 °C above 25 °C. Internal resistance and swollen blocks confirm the string is at end of life. Replace the whole string, not single blocks, and fix the air conditioning.",
+ideal:["Read the event log and battery test data","Measure block voltages on float","Check room temperature and cooling","Isolate the strings and measure internal resistance","Plan full string replacement with UPS on maintenance bypass","Repair the cooling and retest autonomy"]},
+{cat:"ups",diff:"medium",title:"UPS transfers to bypass with 'DC bus overvoltage'",equipment:"80 kVA online UPS, single VRLA string of 32 × 12 V blocks",context:"The UPS transferred to static bypass twice this week with a 'DC bus overvoltage' alarm. It returns to inverter after a manual reset. A technician changed some settings during the last service.",symptoms:["Short transfers to bypass, then manual reset","Batteries feel warm","Hissing noise from one battery block reported"],alarms:["DC BUS OVERVOLTAGE","ON BYPASS"],readings:{"DC bus voltage":"468 V","Float voltage per block (average)":"14.6 V","Battery temperature":"34 °C"},
+loto:"Put the UPS on maintenance bypass per the manufacturer, open the battery breaker, lock and verify zero DC current",
+checks:[
+{label:"Read the UPS event log",live:true,key:true,result:"Alarms started 9 days ago, the day after the last service visit. DC bus peaks at 476 V during recharge."},
+{label:"Read the charger settings",live:true,key:true,result:"Float voltage set to 2.43 V/cell (14.6 V per block). The battery datasheet specifies 2.27 V/cell at 20 °C. Temperature compensation is disabled."},
+{label:"Measure block voltages and temperature",live:true,key:true,result:"Blocks at 14.4–14.8 V. Block 9 is at 41 °C and hissing (venting)."},
+{label:"Inspect block 9 for swelling",hands:true,key:true,result:"Block 9 is swollen and has electrolyte residue at the vent. It must be replaced."},
+{label:"Replace the inverter control board",hands:true,result:"No improvement expected. Inverter output is normal."},
+{label:"Check mains input voltage",live:true,result:"Input 405 V L-L, within tolerance."}],
+options:["Mains overvoltage","Float voltage set too high after the service, overcharging the batteries","Inverter failure","Faulty DC bus voltage sensor"],answer:1,
+explain:"The float voltage was raised to 2.43 V/cell with temperature compensation off. That pushes the DC bus near its overvoltage limit during recharge and overcharges the VRLA blocks. Correct the float voltage to the datasheet value, enable temperature compensation, replace the damaged block and check the others.",
+ideal:["Read the event log and link the start date to the service","Check charger float and boost settings against the battery datasheet","Measure block voltages and temperatures","Put the UPS on maintenance bypass and isolate the string","Replace the damaged block, correct the settings and enable temperature compensation","Monitor the string temperature for a week"]},
+{cat:"ats",diff:"easy",title:"ATS will not transfer back to utility",equipment:"800 A 4-pole automatic transfer switch with microprocessor controller",context:"Utility power returned 2 hours ago after an outage, but the building is still on generator. The generator is still running loaded.",symptoms:["Utility voltage is back at the main switchboard","ATS stays in the emergency position","Retransfer timer is not counting down"],alarms:["UTILITY UNACCEPTABLE"],readings:{"Utility L1-L2":"402 V","Utility L2-L3":"399 V","Utility L3-L1":"401 V","ATS display, utility L2":"0 V"},
+loto:"Not required for controller checks. For sensing-fuse replacement, isolate the sensing circuit and verify dead",
+checks:[
+{label:"Read the ATS controller screen",live:true,key:true,result:"Utility source shows 'Unacceptable'. Phase L2 shows 0 V on the controller although the switchboard meter shows 399 V."},
+{label:"Measure voltage at the ATS utility sensing terminals",live:true,key:true,result:"L1 and L3 present at the sensing terminals. L2 is 0 V after the sensing fuse, 230 V before it."},
+{label:"Check the utility sensing fuse on L2",hands:true,key:true,result:"Fuse is open. Replaced with the same rating, controller now sees 400 V on all phases."},
+{label:"Check the test switch and inhibit input",live:true,result:"Test switch is in Normal, no inhibit active."},
+{label:"Check generator frequency",live:true,result:"50.1 Hz, stable."}],
+options:["Utility voltage still unstable","Blown utility sensing fuse on L2, so the controller sees an unacceptable utility source","Mechanical fault in the transfer mechanism","Generator controller fault"],answer:1,
+explain:"The switchboard shows healthy utility voltage on all phases, but the ATS controller reads 0 V on L2. The controller will not start the retransfer timer while it sees a missing phase. The cause is a blown sensing fuse, a common failure after an outage with voltage spikes.",
+ideal:["Compare the controller voltages with the switchboard meter","Measure at the sensing terminals before and after the fuses","Isolate the sensing circuit and replace the blown fuse","Confirm the retransfer timer starts and transfer completes","Check the generator runs its cooldown and stops"]},
+{cat:"ats",diff:"hard",title:"ATS keeps transferring back and forth",equipment:"1000 A open-transition ATS feeding a hospital wing",context:"Since a utility network change last month, the ATS has transferred to generator and back 14 times in a week, sometimes twice in one hour. Staff report short lighting dips each time.",symptoms:["Frequent transfers, often short","Utility voltage at night sometimes around 360 V","Generator starts every time"],alarms:["UTILITY UNDERVOLTAGE (repeated)"],readings:{"Utility voltage now":"371 V","Dropout setting":"90 % (360 V)","Pickup setting":"92 % (368 V)","Retransfer delay":"30 s"},
+loto:"Not required for setting and log checks",
+checks:[
+{label:"Download the ATS event log",live:true,key:true,result:"Every transfer was triggered by utility undervoltage between 355 and 362 V, lasting 4 to 20 seconds. Retransfer happened 30 s after voltage recovered to 368 V."},
+{label:"Install a power quality logger on the utility side for 24 h",live:true,key:true,result:"Utility voltage sags to 355–365 V during the evening peak and recovers in seconds. No outages, only sags."},
+{label:"Compare pickup and dropout settings with the site standard",key:true,result:"Site standard: dropout 85% (340 V), pickup 90%, retransfer delay 15 min, transfer time delay 3 s. Current settings are much tighter."},
+{label:"Inspect the transfer mechanism",hands:true,result:"Contacts and mechanism in good condition, lubricated, no damage."},
+{label:"Check generator start batteries",live:true,result:"Healthy, 27.1 V on float."}],
+options:["Faulty transfer mechanism","Undersized generator","Dropout and pickup settings too close together with a short retransfer delay, combined with utility voltage sags","Generator controller sending false start signals"],answer:2,
+explain:"The utility is sagging but not failing. Dropout and pickup settings only 2% apart, with a 30 s retransfer delay, make the ATS hunt between sources. Use the site standard settings: lower dropout, a short time delay on transfer to ride through sags, and a long retransfer delay. Report the voltage sags to the utility with the logger data.",
+ideal:["Download the event log and look at trigger values","Log utility voltage for at least 24 h","Compare settings with the site standard and adjust them","Add a transfer time delay to ride through short sags","Send the logger data to the utility","Monitor transfers for a week"]},
+{cat:"motor",diff:"easy",title:"Pump motor trips on overload after a few minutes",equipment:"22 kW 400 V 4-pole induction motor, DOL starter, chilled-water pump",context:"The chilled-water pump motor trips on thermal overload 5 to 10 minutes after each start. It ran fine until the pump was serviced last week.",symptoms:["Motor runs, then trips on overload","Motor frame very hot","Pump discharge pressure higher than usual"],alarms:["OVERLOAD TRIP"],readings:{"Nameplate current":"41 A","Running current L1/L2/L3":"47 / 47 / 48 A","Supply voltage":"398 V","Discharge pressure":"5.8 bar (normal 4.2 bar)"},
+loto:"Open and lock the motor starter isolator, test for absence of voltage at the motor terminals",
+checks:[
+{label:"Measure running current on all three phases",live:true,key:true,result:"47–48 A on all phases, balanced, about 15% above nameplate."},
+{label:"Measure supply voltage and balance",live:true,key:true,result:"398 V, imbalance below 1%. Supply is fine."},
+{label:"Check the pump valves and system pressure",key:true,result:"The discharge isolation valve is only about a quarter open after the pump service, and the bypass valve is fully open. The pump is running far off its design point."},
+{label:"Megger the motor windings",hands:true,result:"Insulation 400 MΩ to earth on all phases. Healthy."},
+{label:"Check the overload relay setting",live:true,key:true,result:"Set to 42 A, correct for this motor."},
+{label:"Check motor bearings",hands:true,result:"Bearings turn smoothly, no noise."}],
+options:["Supply voltage imbalance","Winding insulation failure","Mechanical overload: pump valves left in the wrong position after the service","Overload relay set too low"],answer:2,
+explain:"The current is high but balanced, the supply is healthy and the windings are fine. The overload setting is correct. The motor is genuinely overloaded because the valves were left in the wrong positions after the pump service, so the pump runs off its design point.",
+ideal:["Measure current on all phases and compare with nameplate","Check supply voltage and balance","Verify the overload setting","Check the hydraulic system: valves and pressures","Restore valve positions and recheck current","Record the running current for the PM log"]},
+{cat:"motor",diff:"medium",title:"Motor trips on earth fault after heavy rain",equipment:"15 kW 400 V motor, outdoor cooling tower fan, fed from a VFD",context:"After two days of heavy rain, the cooling tower fan VFD trips on 'Earth fault' within seconds of starting. Resetting does not help.",symptoms:["VFD trips on earth fault at start","Terminal box cover gasket looks damaged","Motor has been idle for 3 days"],alarms:["VFD EARTH FAULT"],readings:{"VFD fault code":"Earth fault on output","Ambient humidity":"95 %"},
+loto:"Isolate and lock the VFD supply, wait for the DC bus discharge time, verify absence of voltage at the VFD output and motor terminals",
+checks:[
+{label:"Read the VFD fault history",live:true,key:true,result:"Earth fault on output, 3 times, each within 2 s of start. No earlier faults this year."},
+{label:"Disconnect the motor cable from the VFD and megger the motor and cable",hands:true,key:true,result:"Cable alone: 500 MΩ. Motor windings to earth: 0.4 MΩ at 500 V DC. Very low."},
+{label:"Open the motor terminal box",hands:true,key:true,result:"Water in the terminal box, corrosion on the terminals, damaged cover gasket."},
+{label:"Megger the motor without disconnecting the VFD",hands:true,flag:"Megger testing with the VFD still connected can destroy the drive's output semiconductors.",result:"You applied 500 V DC through the drive output. The test is not valid and may have damaged the VFD."},
+{label:"Replace the VFD",result:"No change expected: the fault is downstream of the drive."}],
+options:["VFD output stage failure","Damaged motor cable","Moisture in the motor terminal box and windings, giving low insulation resistance","Wrong VFD parameters"],answer:2,
+explain:"With the motor cable disconnected from the drive, the cable tests healthy but the motor winding is 0.4 MΩ. Water entered through a damaged terminal box gasket. Dry the motor (space heater or low-voltage current), clean the terminals and replace the gasket. Retest to at least 5 MΩ, ideally above 100 MΩ, before restarting.",
+ideal:["Read the VFD fault history","Isolate, wait for DC bus discharge and prove dead","Disconnect the motor from the VFD before any insulation test","Megger the cable and motor separately","Dry the windings, clean the terminals, replace the gasket","Retest insulation and polarisation index, then restart"]},
+{cat:"breaker",diff:"medium",title:"Main ACB will not close after maintenance",equipment:"2500 A LV air circuit breaker, motor-charged springs, electronic trip unit",context:"After annual maintenance the main incomer ACB was racked in, but it will not close from the local button or the SCADA command.",symptoms:["Spring charged indicator shows 'Charged'","Close button pressed: nothing happens","Ready-to-close indicator not lit"],alarms:["Trip unit: no alarm shown"],readings:{"Control supply":"230 V AC present","Spring status":"Charged","Racking position":"Connected"},
+loto:"Not required for control circuit checks with the breaker racked to TEST position",
+checks:[
+{label:"Rack the breaker to TEST position and try to close",key:true,result:"Still will not close in TEST. The fault is in the breaker itself, not the main circuit."},
+{label:"Check the undervoltage (UV) release supply",live:true,key:true,result:"0 V at the UV release terminals. The UV release supply goes through an auxiliary contact chain that was disconnected during maintenance."},
+{label:"Check the mechanical trip/lock-out button",key:true,result:"The 'Push to trip' lock-out is not engaged."},
+{label:"Check the closing coil",live:true,result:"Closing coil resistance and supply are normal."},
+{label:"Check the trip unit for a latched trip indication",live:true,result:"No latched trip. Mechanical reset button is in the reset position."}],
+options:["Closing coil burnt out","Springs not charged","No supply to the undervoltage release, so the breaker is held tripped","Trip unit fault"],answer:2,
+explain:"An ACB with a UV release cannot close unless the release is energised. During maintenance the UV supply wiring through an auxiliary contact chain was left disconnected. Reconnect it per the wiring diagram, check the ready-to-close indicator, then close.",
+ideal:["Rack to TEST to separate main-circuit and control problems","Check the ready-to-close conditions: springs, UV release, lock-outs, reset","Measure the UV release supply","Reconnect the wiring per the diagram","Close in TEST, then rack in and close under load"]},
+{cat:"breaker",diff:"hard",title:"Feeder breaker trips at random with no clear overload",equipment:"630 A MCCB with electronic trip unit (LSIG) feeding a distribution board",context:"A feeder MCCB has tripped five times in two weeks, at different times of day. The feeder load is only 300 A at peak. The trip unit shows 'G' (ground fault) after each trip.",symptoms:["Trips with 'G' indication","Load well below the breaker rating","New LED lighting and IT racks added to the board last month"],alarms:["Trip unit: G (ground fault)"],readings:{"Peak load":"300 A","Ground fault pickup setting":"0.2 × In (126 A)","Ground fault delay":"0.1 s"},
+loto:"Isolate the feeder at the MCCB and the downstream board main switch, lock and verify dead",
+checks:[
+{label:"Read the trip unit history",live:true,key:true,result:"5 ground-fault trips, recorded earth current between 128 and 140 A, always for less than 0.3 s."},
+{label:"Measure neutral and earth current with a clamp meter under load",live:true,key:true,result:"Neutral current 180 A (high third-harmonic content). Earth conductor current 40–60 A continuous."},
+{label:"Inspect the downstream board for neutral-earth connections",hands:true,key:true,result:"A neutral-earth bond was added in the downstream board when the IT racks were installed. The neutral current splits between neutral and earth paths."},
+{label:"Megger the feeder cable",hands:true,result:"Insulation 1.2 GΩ. Healthy."},
+{label:"Replace the MCCB",result:"Not justified. The trip unit is correctly detecting earth current."}],
+options:["Faulty trip unit","Overloaded feeder","An incorrect neutral-earth bond downstream, letting harmonic neutral current flow in the earth path","Cable insulation failure"],answer:2,
+explain:"The trip unit is right: real current flows in the earth path. A neutral-earth bond in a downstream board (only allowed at the source) splits the neutral current, which is high because of LED and IT harmonics. Remove the illegal bond, check the neutral conductor size for harmonics, and review the ground-fault setting against the selectivity study.",
+ideal:["Read the trip history and recorded values","Measure neutral and earth currents under load","Isolate and inspect downstream boards for N-E bonds","Remove the bond and verify earth current drops","Check neutral sizing for harmonic load","Confirm settings with the selectivity study"]},
+{cat:"battery",diff:"easy",title:"Substation battery charger shows 'DC earth fault'",equipment:"110 V DC substation battery, 55 cells NiCd, charger with earth-fault monitor",context:"The 110 V DC system for switchgear tripping shows 'DC earth fault +ve' for three days. Breakers still operate.",symptoms:["Earth fault alarm on the positive pole","DC system still working","Recent cable work in the outdoor switchyard"],alarms:["DC EARTH FAULT +VE"],readings:{"Battery voltage":"122 V","+ve to earth":"18 V","-ve to earth":"104 V","Normal values":"about 61 V each"},
+loto:"Do not isolate the DC system without an outage plan: it powers protection tripping. Work circuit by circuit with permission",lotoFlag:"Isolating the whole DC battery removes protection tripping for the substation. Work circuit by circuit instead.",
+checks:[
+{label:"Measure pole-to-earth voltages",live:true,key:true,result:"+ve to earth 18 V, -ve to earth 104 V. A low-resistance path from the positive pole to earth."},
+{label:"Switch off DC circuits one at a time (with protection engineer approval)",live:true,key:true,result:"When the outdoor switchyard circuit is opened, the voltages return to 61 V / 61 V. The fault is on that circuit."},
+{label:"Inspect the outdoor cable work (circuit already switched off)",key:true,result:"A new junction box was installed without a gland seal. Water inside, terminals corroded and tracking to the box."},
+{label:"Isolate the whole DC battery to test it",flag:"Removing the DC supply disables protection tripping for the switchgear.",result:"You removed the tripping supply for the whole substation. This is unsafe without an outage plan."},
+{label:"Check charger output",live:true,result:"Charger float voltage normal at 1.42 V/cell."}],
+options:["Charger fault","Failed battery cell","Moisture in a new outdoor junction box creating a positive pole earth fault","Faulty earth-fault monitor"],answer:2,
+explain:"The pole voltages are unbalanced, so a real earth fault exists. Opening circuits one by one, with approval, located the switchyard circuit. A junction box installed without a sealed gland let water in. Dry and reseal the box and replace corroded terminals. A second earth fault on the other pole could cause false tripping, so fix it promptly.",
+ideal:["Measure pole-to-earth voltages","Plan circuit-by-circuit isolation with protection staff","Locate the faulty circuit","Inspect recent work on that circuit","Repair and reseal, then confirm balanced voltages","Brief the team on gland sealing for outdoor boxes"]},
+{cat:"battery",diff:"medium",title:"Generator start battery fails in cold mornings",equipment:"24 V start battery (2 × 12 V 200 Ah lead-acid) with float charger",context:"The standby generator failed to start on two cold mornings. Later in the day it starts normally. The batteries are 2 years old.",symptoms:["Slow cranking on cold mornings","Charger ammeter shows near zero","Battery terminals look clean"],alarms:["LOW BATTERY VOLTAGE (morning only)"],readings:{"Battery voltage at rest":"24.3 V","Charger output":"24.4 V","Morning temperature":"4 °C"},
+loto:"Controller in OFF, open the battery isolator before working on terminals",
+checks:[
+{label:"Measure charger output voltage",live:true,key:true,result:"24.4 V. A 24 V lead-acid battery needs about 27.0–27.4 V float. The charger is not charging the battery."},
+{label:"Check the charger fuse and settings",hands:true,key:true,result:"The charger is set to 'Standby/Storage 24.4 V' mode after a service. Should be 'Float 27.2 V'."},
+{label:"Measure specific gravity or rest voltage per cell",key:true,result:"About 2.02 V per cell: battery about 50% charged."},
+{label:"Load-test each battery after a full charge",hands:true,key:true,result:"After 24 h at correct float, both batteries pass the load test."},
+{label:"Replace the starter motor",result:"Starter draws normal current. Not the cause."}],
+options:["Starter motor fault","Batteries at end of life","Charger set to the wrong mode, leaving the batteries half charged","Cold fuel waxing"],answer:2,
+explain:"The charger output is 24.4 V, which is the battery's rest voltage, so no charge current flows. The batteries are only about half charged, and cold weather reduces their capacity further, causing slow cranking. Set the charger to float 27.2 V, charge fully and load-test before condemning the batteries.",
+ideal:["Measure charger output and compare with float voltage","Check charger mode and settings","Measure state of charge","Correct the setting and fully charge","Load-test the batteries","Add charger voltage to the weekly checklist"]}
+];
+/* Built-in question bank: [question, [4 options], correct index, explanation]. Used when the AI server is not connected. */
+const QBANK={
+"electrical-safety-fundamentals":[
+["What is the correct order for verifying absence of voltage?",["Test the circuit, then test the tester","Test the tester on a known live source, test the circuit, test the tester again","Test the circuit twice","Look for the open breaker, then touch"],1,"Live-dead-live proves the tester worked both before and after the measurement."],
+["Who may remove a personal lock during lockout/tagout?",["Any supervisor","The person who applied it, or under the site's formal lock-removal procedure","The next shift","Anyone with the master key"],1,"A lock protects its owner. Removal by anyone else needs the documented procedure."],
+["Arc-rated PPE should be selected based on:",["The colour code of the panel","The incident energy or PPE category on the equipment label or risk assessment","The technician's experience","The weather"],1,"PPE must match the calculated incident energy at the working distance."],
+["Which current through the body can cause ventricular fibrillation?",["About 1 mA","About 5 mA","About 50–100 mA","Only above 10 A"],2,"Currents in the tens of milliamps across the chest can trigger fibrillation."],
+["Before working on a UPS output circuit you must also consider:",["Nothing else if the UPS input breaker is open","Battery supply and stored energy in capacitors, which can keep the output live","Only the generator","The room lighting"],1,"A UPS can feed its output from batteries with the input open; capacitors hold charge."],
+["What is the first action if a colleague is in contact with a live conductor?",["Pull them off by hand","Isolate the supply or separate them using a non-conductive object, then call for help","Pour water on them","Wait for them to let go"],1,"Never touch the casualty while they are still in contact with the source."],
+["A permit to work is used to:",["Record overtime","Control high-risk work by defining isolation, hazards and authorised people","Order spare parts","Replace LOTO"],1,"Permits formalise who works, where, under what isolation."],
+["Back-feed means:",["A supply returning through another path, such as a generator or parallel source","A loose neutral","An earth fault","A tripped breaker"],0,"Equipment can be energised from an unexpected source unless every source is isolated."]],
+"electrical-principles":[
+["A 230 V heater draws 10 A. Its power is about:",["23 W","230 W","2.3 kW","23 kW"],2,"P = V × I = 230 × 10 = 2300 W."],
+["In a balanced star (wye) system, line voltage equals:",["Phase voltage","√3 × phase voltage","2 × phase voltage","Phase voltage / √3"],1,"400 V = √3 × 230 V."],
+["Power factor is the ratio of:",["Reactive to apparent power","Real power (kW) to apparent power (kVA)","Voltage to current","kVA to kW"],1,"PF = kW / kVA."],
+["A 500 kVA generator at 0.8 PF can supply about:",["500 kW","400 kW","625 kW","800 kW"],1,"kW = kVA × PF = 500 × 0.8."],
+["The RMS value of a 230 V sine wave has a peak of about:",["230 V","325 V","400 V","163 V"],1,"Peak = RMS × √2 ≈ 325 V."],
+["If resistance doubles at constant voltage, current:",["Doubles","Halves","Stays the same","Quadruples"],1,"I = V / R."],
+["Three-phase power is calculated as:",["V × I","√3 × V(line) × I × PF","3 × V(line) × I","V × I × PF"],1,"P = √3 · VL · IL · cosφ."],
+["On a single-line diagram, a single line represents:",["Only the neutral","All three phases of a circuit","Control wiring","The earth"],1,"SLDs simplify three-phase circuits to one line."]],
+"test-instruments":[
+["For measurements on a building's main distribution board you need a meter rated at least:",["CAT I","CAT II","CAT III","No rating needed"],2,"CAT III covers distribution level; CAT IV covers the origin of the installation."],
+["Insulation resistance tests apply:",["Low AC voltage","A DC test voltage, typically 500 or 1000 V","Mains voltage","Radio frequency"],1,"A megger applies DC test voltage and measures leakage."],
+["Before measuring current with a multimeter in series you should:",["Leave the leads in the voltage jacks","Move the lead to the current jack and break the circuit safely","Set the meter to ohms","Clamp around both conductors"],1,"Measuring current in series needs the correct jack; clamps are safer for high current."],
+["A clamp meter around both line and neutral of a healthy circuit reads:",["Load current","About zero","Double the load current","Voltage"],1,"The currents cancel; a reading indicates leakage."],
+["Continuity tests must be done:",["On live circuits","On isolated and proven-dead circuits","Only on batteries","With a voltage tester"],1,"Ohms ranges are not designed for live circuits."],
+["A 2-pole voltage tester is preferred over a non-contact tester for proving dead because:",["It is cheaper","It gives a definitive measurement between conductors","It needs no batteries","It is smaller"],1,"Non-contact testers can miss voltage; they are not for proving dead."],
+["Readings should be recorded with:",["Only the value","Value, units, test voltage, temperature and date","A photo only","The meter brand"],1,"Context allows trends and comparisons."],
+["Meter fuses must be replaced with:",["Any fuse that fits","The exact type and rating specified by the manufacturer (high breaking capacity)","A wire link","A slow-blow automotive fuse"],1,"Wrong fuses can explode during a fault."]],
+"battery-basics":[
+["Typical float voltage for a VRLA cell at 20–25 °C is about:",["2.00 V","2.25–2.27 V","2.40 V","1.80 V"],1,"Check the datasheet; 2.25–2.27 V/cell is common."],
+["Each 10 °C above 25 °C roughly does what to VRLA life?",["Doubles it","Halves it","No effect","Adds 10%"],1,"Heat accelerates grid corrosion and dry-out."],
+["The main gas hazard in a flooded battery room is:",["Carbon monoxide","Hydrogen","Chlorine","Methane"],1,"Hydrogen is released during charging; ventilation is essential."],
+["Equalize charging is used to:",["Discharge the battery","Bring all cells to the same state of charge in flooded batteries","Cool the battery","Test the charger"],1,"Equalize corrects cell imbalance; not normally used on VRLA."],
+["A swollen VRLA block indicates:",["Normal ageing","Overheating or overcharging; the block should be replaced","Low electrolyte that can be topped up","A good connection"],1,"Swelling signals thermal or charging problems."],
+["Which PPE is essential for battery work?",["Hearing protection only","Face shield, acid-resistant gloves and apron, insulated tools","Hard hat only","None"],1,"Electrolyte and short-circuit arcs are the main hazards."],
+["Mixing old and new blocks in one string:",["Is recommended","Causes imbalance; replace whole strings","Increases capacity","Has no effect"],1,"Mismatched blocks age the string unevenly."],
+["Internal resistance rising 50% above baseline usually means:",["The block is healthy","The block has failed or is near failure","The charger is off","The meter is wrong"],1,"Rising resistance tracks capacity loss."]],
+"generator-operation-maintenance":[
+["Running a diesel genset at very light load for long periods causes:",["Better fuel economy","Wet stacking (unburnt fuel and carbon in the exhaust)","Higher oil pressure","Nothing"],1,"Run monthly at 30% load or more, and load-bank test yearly."],
+["The AVR controls:",["Engine speed","Alternator output voltage via excitation","Fuel level","Coolant temperature"],1,"The governor controls speed/frequency; the AVR controls voltage."],
+["Frequency of a 4-pole alternator at 1500 rpm is:",["25 Hz","50 Hz","60 Hz","100 Hz"],1,"f = (rpm × poles) / 120 = 50 Hz."],
+["An annual load bank test should:",["Run at no load","Step the load up to 100% of rated kW for 2–4 hours","Last 5 minutes","Be done with the building load only"],1,"It proves full-load capability and burns off deposits."],
+["Engine block heaters keep coolant at about:",["5 °C","30–40 °C","90 °C","Ambient only"],1,"Warm engines start quickly and take load in seconds."],
+["A shutdown on 'high coolant temperature' is most likely caused by:",["Weak batteries","Blocked radiator, failed thermostat or slipping fan belt","Low fuel","AVR failure"],1,"Cooling-system faults cause overheating."],
+["Water should be drained from the fuel water separator:",["Never","At least monthly","Every 5 years","Only after a failure"],1,"Water in fuel damages injectors and grows microbes."],
+["Minimum insulation resistance for an alternator is commonly taken as:",["0.1 MΩ","1 MΩ plus 1 MΩ per kV of rated voltage","1 kΩ","100 GΩ"],1,"A common rule of thumb; higher values and a PI above 2 are better."]],
+"ups-systems":[
+["In an online double-conversion UPS, the load is normally fed by:",["The mains directly","The inverter","The batteries directly","The static bypass"],1,"The rectifier feeds the DC bus, and the inverter feeds the load."],
+["The static bypass is used:",["Only during maintenance","Automatically on inverter fault or overload","To charge batteries","Never"],1,"It transfers the load to mains in milliseconds."],
+["The maintenance bypass allows:",["Faster charging","Isolating the UPS for service while the load stays on mains","Running on batteries longer","Testing the batteries"],1,"Follow the manufacturer's sequence exactly to avoid dropping the load."],
+["UPS autonomy depends mainly on:",["Inverter colour","Battery capacity, load and battery condition","Room lighting","Input frequency"],1,"Higher load or aged batteries reduce runtime."],
+["A 'DC bus overvoltage' alarm can be caused by:",["Low load","Incorrect charger settings or a rectifier fault","Low room temperature","A tripped output breaker"],1,"Charger/rectifier control issues push the DC bus too high."],
+["Before working inside a UPS, after isolating all sources you must:",["Start work immediately","Wait the stated capacitor discharge time and prove dead","Close the bypass","Remove the batteries first while live"],1,"DC capacitors stay charged after isolation."],
+["UPS efficiency in double-conversion mode is typically:",["50–60%","94–97%","100%","80% at all loads"],1,"Modern UPS units are 94–97% efficient at moderate load."],
+["A UPS event log helps you:",["Order spares","See the sequence of alarms and transfers leading to a fault","Charge batteries","Nothing"],1,"Always read the log before troubleshooting."]],
+"ats-fundamentals":[
+["The retransfer delay on an ATS exists to:",["Save fuel","Make sure the utility is stable before returning the load","Test the batteries","Cool the generator immediately"],1,"Commonly 5–30 minutes."],
+["Open-transition transfer means:",["Both sources are briefly paralleled","The load is disconnected briefly between sources","The ATS is open for inspection","No transfer happens"],1,"Break-before-make; the load sees a short interruption."],
+["The ATS will not transfer to the generator if:",["Generator voltage and frequency are below the pickup settings","The utility is healthy and the test switch is in Normal","Both are true","Neither is true"],2,"Either condition prevents a transfer."],
+["A monthly ATS test should preferably be done by:",["Pulling the main utility fuses","Using the controller's test function to simulate a utility failure","Unplugging the controller","Waiting for a real outage"],1,"Controlled tests avoid unnecessary risk."],
+["Dropout and pickup settings very close together cause:",["Stable operation","Hunting: repeated transfers","Faster starts","Lower fuel use"],1,"Allow a reasonable gap and time delays."],
+["The generator cooldown period after retransfer lets:",["The ATS reset","The engine run unloaded to cool before stopping","The batteries charge","The fuel tank refill"],1,"Typically about 5 minutes."],
+["Phase rotation must match on both sources because:",["It affects metering only","Motors would run backwards after a transfer","It is cosmetic","It changes voltage"],1,"Incorrect rotation reverses three-phase motors."],
+["Annual ATS maintenance includes:",["Only cleaning the screen","Inspecting contacts, arc chutes, mechanism, terminations and thermography","Replacing the controller","Nothing"],1,"Done with the ATS isolated and locked out."]],
+"motor-maintenance":[
+["The synchronous speed of a 4-pole motor on 50 Hz is:",["3000 rpm","1500 rpm","1000 rpm","750 rpm"],1,"ns = 120f/p = 1500 rpm."],
+["A DOL start draws about:",["The same as running current","6–8 × full-load current","2 × full-load current","Half of full-load current"],1,"Star-delta or soft starters reduce this."],
+["Before megger-testing a motor fed from a VFD you must:",["Test through the VFD","Disconnect the motor cable from the VFD output","Run the motor","Bypass the overload"],1,"The test voltage can destroy drive semiconductors."],
+["Minimum insulation resistance for random-wound LV motors (IEEE 43, 40 °C) is:",["0.5 MΩ","5 MΩ","500 MΩ","1 kΩ"],1,"Readings above 100 MΩ are typically good."],
+["A polarisation index (PI) below 1 indicates:",["Excellent insulation","Poor insulation (moisture or contamination)","Normal for new motors","Nothing"],1,"PI above 2 is good."],
+["Balanced high current on all three phases usually indicates:",["A single-phasing fault","Mechanical overload","An earth fault","An open winding"],1,"Unbalanced current points to supply or winding faults."],
+["The thermal overload relay should be set to:",["Twice nameplate current","The motor nameplate full-load current (adjusted per manufacturer)","Any value","The breaker rating"],1,"Correct settings protect the winding."],
+["Winding resistance imbalance above about 2% suggests:",["Normal variation","Shorted turns or loose connections","A good motor","Wrong meter"],1,"Measure with a micro-ohmmeter."]],
+"circuit-breakers":[
+["The 'L' setting on an LSIG trip unit is:",["Long-time (overload) protection","Low voltage","Locked","Leakage only"],0,"L = long time, S = short time, I = instantaneous, G = ground fault."],
+["Breaker contact resistance is measured with:",["A multimeter on ohms","A DC micro-ohmmeter at 100 A or more","A megger","A clamp meter"],1,"High test current gives a meaningful result."],
+["A breaker with an undervoltage release will not close if:",["The UV release is not energised","The springs are charged","It is in TEST","The load is off"],0,"The UV release holds the mechanism tripped."],
+["Secondary injection testing checks:",["Busbar insulation","The trip unit's pickup and timing","Cable size","Earth resistance"],1,"Primary injection tests CTs and the whole chain."],
+["Silver-plated contacts should be cleaned with:",["A file","Dry lint-free cloth (per manufacturer)","Sandpaper","Water"],1,"Filing removes the plating."],
+["Selectivity (discrimination) means:",["All breakers trip together","Only the breaker closest to the fault trips","The main breaker trips first","Breakers never trip"],1,"Settings follow the coordination study."],
+["After a breaker interrupts a fault near its breaking capacity you should:",["Reset and forget","Inspect and maintain it before returning to service","Replace the cable","Increase the setting"],1,"High fault currents erode contacts and arc chutes."],
+["Thermography on breakers is done:",["De-energised","Under load, from a safe distance with covers as permitted","Only at night","Never"],1,"Hot spots appear only when current flows."]],
+"fault-finding-methodology":[
+["The first step in systematic fault finding is:",["Replace the most expensive part","Gather information: symptoms, history, event logs","Swap parts at random","Call the vendor"],1,"Good information narrows the search fast."],
+["The half-split method means:",["Testing every component","Testing at the midpoint of the circuit to halve the search area each time","Splitting the team","Checking only the start"],1,"It finds faults in a long chain efficiently."],
+["Before hands-on checks you must:",["Wear gloves only","Isolate, lock out and prove dead (unless live diagnostics are justified and permitted)","Start the equipment","Remove all covers"],1,"Safety precedes diagnosis."],
+["A fault that appears only when hot suggests:",["A permanent short","A thermal or intermittent connection problem","A software fault","Nothing useful"],1,"Thermography or heat testing can help."],
+["After a repair you should:",["Leave immediately","Test function, find the root cause and record it","Reset the alarms only","Order more spares"],1,"Root cause prevents repeat failures."],
+["'Swap until it works' troubleshooting is bad because:",["It is fast","It wastes parts and can hide the root cause","It is safe","It is recommended"],1,"Diagnose before replacing."],
+["Comparing a reading with a known-good identical unit is called:",["Guessing","Comparative testing","Calibration","Inspection"],1,"Useful when specifications are unknown."],
+["Root cause analysis asks:",["Who caused it","Why did it happen, repeatedly, until the basic cause is found","How much it costs","When to stop"],1,"The 5 Whys is a common technique."]],
+"protection-coordination":[
+["A coordination study ensures:",["The cheapest breakers","Protective devices trip selectively and within equipment withstand limits","All relays trip together","No breakers are needed"],1,"It sets time-current curves."],
+["CT polarity matters for:",["Overcurrent only","Directional and differential protection","Lighting","Metering only"],1,"Wrong polarity causes false trips or no trip."],
+["Differential protection compares:",["Voltage and current","Current entering and leaving a zone","Two voltages","Speed and torque"],1,"A difference indicates an internal fault."],
+["Instantaneous settings too low can cause:",["Better protection","Nuisance tripping on motor or transformer inrush","Lower fault current","Nothing"],1,"Account for inrush in settings."],
+["Ground-fault protection on a TN-S system can trip falsely if:",["The neutral is correctly sized","A neutral-earth bond exists downstream of the source","The load is balanced","The cable is short"],1,"Neutral current then flows in the earth path."],
+["Protection relays should be tested:",["Never","Periodically by secondary injection and after setting changes","Only when new","By pressing reset"],1,"Testing confirms the scheme works."],
+["Arc flash incident energy depends strongly on:",["Cable colour","Fault current and clearing time","Room temperature","Voltage only"],1,"Faster clearing reduces energy."],
+["A fuse's I²t value is used for:",["Colour coding","Coordination and let-through energy checks","Price","Voltage rating"],1,"It shows how much energy passes during a fault."]],
+"power-quality":[
+["The dominant harmonic from single-phase LED and IT loads is usually the:",["2nd","3rd","10th","50th"],1,"Third harmonics add up in the neutral."],
+["Triplen harmonics in a 4-wire system cause:",["Lower neutral current","High neutral current, sometimes above phase current","No effect","Phase reversal"],1,"Size neutrals accordingly."],
+["THD stands for:",["Total harmonic distortion","Thermal heat dissipation","Three-phase harmonic device","Test high direct"],0,"It measures waveform distortion."],
+["A voltage sag is:",["A long interruption","A short reduction in voltage (10–90%) for 0.5 cycles to 1 minute","A permanent overvoltage","A frequency change"],1,"Sags often come from faults or motor starts."],
+["Power factor correction capacitors with high harmonics risk:",["Lower bills","Resonance and capacitor failure","Better voltage","Nothing"],1,"Use detuned reactors in harmonic-rich systems."],
+["To investigate intermittent problems you should:",["Take one spot reading","Install a power quality logger for days or weeks","Replace the transformer","Guess"],1,"Logging captures events as they happen."],
+["Voltage imbalance above about 2% on motors causes:",["Faster running","Disproportionate heating and reduced life","Lower current","Nothing"],1,"Small voltage imbalance causes large current imbalance."],
+["K-rated transformers are designed for:",["High altitude","Harmonic-rich loads","Outdoor use","DC loads"],1,"They tolerate harmonic heating."]],
+"arc-flash-studies":[
+["The arc flash boundary is the distance at which incident energy equals:",["0 cal/cm²","1.2 cal/cm² (onset of a second-degree burn)","8 cal/cm²","40 cal/cm²"],1,"Inside it, arc-rated PPE is required."],
+["Which standard is widely used to calculate incident energy?",["IEEE 1584","ISO 9001","IEC 60034","ASHRAE 90.1"],0,"IEEE 1584 gives the calculation method."],
+["The most effective way to reduce arc flash risk is:",["Better PPE","De-energised work, then engineering controls like faster protection","Working faster","Using a longer screwdriver"],1,"Follow the hierarchy of controls."],
+["Arc flash labels must show at least:",["The installer's name","Incident energy or PPE category, working distance and boundary","Only the voltage","The paint colour"],1,"Labels inform PPE selection."],
+["An energy-reducing maintenance switch:",["Turns off the lights","Temporarily speeds up protection while people work nearby","Locks the breaker","Measures energy use"],1,"Faster clearing lowers incident energy."],
+["Arc flash studies should be reviewed:",["Never","After system changes and periodically (about every 5 years)","Daily","Only after accidents"],1,"Changes in fault current or settings alter results."],
+["Cotton clothing under arc-rated PPE is acceptable because:",["It is cheap","Natural fibres do not melt onto skin like synthetics","It is fire-proof","It is required by law everywhere"],1,"Never wear meltable synthetics under PPE."],
+["Racking a breaker in or out is an arc flash risk task because:",["It is heavy","Faults during racking can initiate an arc","It is noisy","It takes time"],1,"Use remote racking where possible."]],
+"critical-power-design":[
+["N+1 redundancy means:",["One unit only","The number needed plus one spare unit","Double everything","No spare"],1,"One unit can fail or be serviced without losing capacity."],
+["2N redundancy means:",["Two units in total","Two fully independent systems, each able to carry the whole load","N+2","Half capacity"],1,"Used for the highest availability."],
+["A single point of failure is:",["A component whose failure stops the whole system","A backup unit","A redundant path","A spare part"],0,"Designs aim to remove them."],
+["Dual-corded IT equipment is best fed from:",["The same PDU","Two separate power paths (A and B)","A single UPS output","An extension lead"],1,"Independent paths survive a single failure."],
+["Generator sizing must consider:",["Only running kW","Running load, motor starting (step loads), harmonics and future growth","Only kVA","The building height"],1,"Step loads cause voltage dips."],
+["Concurrent maintainability means:",["Everything is maintained at once","Any component can be maintained without shutting down the load","No maintenance needed","Maintenance only at night"],1,"Common data-centre design target."],
+["Selective coordination is especially important in critical power because:",["It saves cost","A fault must not take out more of the system than necessary","Breakers are cheaper","It is cosmetic"],1,"Limits the impact of faults."],
+["UPS battery autonomy is often designed to cover:",["Days","The time for generators to start and take load, plus margin","One second","No time"],1,"Typically 5–15 minutes in data centres."]],
+"maintenance-management":[
+["Preventive maintenance is:",["Repair after failure","Scheduled tasks to reduce the chance of failure","Random checks","Replacing everything yearly"],1,"Based on time or usage."],
+["Condition-based maintenance relies on:",["The calendar","Measured indicators like vibration, thermography and oil analysis","Guessing","Manufacturer marketing"],1,"Act when condition shows deterioration."],
+["MTBF stands for:",["Mean time between failures","Maximum time before fixing","Minimum test before failure","Monthly test by foreman"],0,"A reliability measure."],
+["Criticality ranking helps to:",["Paint equipment","Focus maintenance effort and spares on equipment whose failure hurts most","Order coffee","Remove procedures"],1,"High-criticality items get more attention."],
+["A good maintenance KPI is:",["Number of emails","PM compliance (planned tasks completed on time)","Hours in the office","Tools bought"],1,"Also MTTR and backlog."],
+["Spare-parts minimum stock should consider:",["Only price","Lead time, criticality and usage rate","Colour","Shelf space only"],1,"Long-lead critical parts need stock."],
+["Root cause analysis after failures helps to:",["Assign blame","Prevent repeat failures by fixing the basic cause","Close the work order fast","Avoid reports"],1,"Feed lessons into the PM plan."],
+["A CMMS is used to:",["Write emails","Plan, record and analyse maintenance work and assets","Control generators","Measure voltage"],1,"Computerised maintenance management system."]],
+"leading-safe-work":[
+["A toolbox talk before a job should cover:",["Only the schedule","Hazards, isolations, PPE, roles and emergency arrangements","Lunch plans","Nothing"],1,"Everyone should understand the risks."],
+["If a technician feels a task is unsafe, the leader should:",["Insist they continue","Stop the work and review the risk together (stop-work authority)","Ignore it","Do it themselves quickly"],1,"Stop-work authority builds a safety culture."],
+["A near miss should be:",["Ignored","Reported and investigated","Kept secret","Punished"],1,"Near misses reveal hazards before injuries happen."],
+["Competence for electrical work means:",["Having worked a long time","Having the training, knowledge and experience for the specific task","Owning tools","Being senior"],1,"Authorise people for specific tasks."],
+["Contractor electrical work on site must be:",["Unsupervised","Under the site's permit and isolation system","Done at night only","Exempt from LOTO"],1,"Contractors follow the same safety system."],
+["A job hazard analysis is completed:",["After the job","Before the job starts","Only for accidents","Never"],1,"Plan controls before exposure."],
+["Leading by example means:",["Skipping PPE when in a hurry","Always following the rules you expect others to follow","Watching from the office","Signing permits without checking"],1,"Behaviour sets the standard."],
+["After an incident, the first priority is:",["Writing the report","Making the area safe and caring for anyone injured","Finding who to blame","Restarting equipment"],1,"Then preserve evidence and investigate."]]
+};
 /* ---------- basics ---------- */
 const $=s=>document.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -608,7 +898,7 @@ function vChat(){
     <div class="seg" role="group">${modes.map(m=>`<button data-mode="${m}" aria-pressed="${S.mode===m}">${esc(t("mode_"+m))}</button>`).join("")}</div>
     <div class="box"><button class="btn ghost" data-act="mic" title="${esc(t("voice"))}" aria-label="${esc(t("voice"))}">${ic("mic")}</button>
     <textarea id="q" rows="2" placeholder="${esc(t("placeholder"))}"></textarea>
-    <button class="btn primary" id="sendBtn" data-act="send" ${sample?"":"disabled"}>${ic("send")}<span>${esc(t("send"))}</span></button></div>
+    <button class="btn primary" id="sendBtn" data-act="send">${ic("send")}<span>${esc(t("send"))}</span></button></div>
   </div>`;
 }
 function msgHtml(m,i){
@@ -626,6 +916,7 @@ async function sendChat(){
   await loadChunks();
   const hits=searchKb(text+" "+(S.chat.filter(m=>m.role==="user").slice(-1)[0]?.content||""),4);
   const modeTxt={general:"",trouble:"Mode: troubleshooting. Give a structured fault-finding plan: safety precautions, most likely causes ranked, checks in order with expected readings, then corrective actions and when to escalate.",safety:"Mode: safety brief. Produce a job safety brief: hazards, isolation points and LOTO steps, PPE with arc-flash considerations, verification of absence of voltage, emergency actions.",trainee:"Mode: trainee. Explain in plain language for a beginner technician, define terms, use an analogy, finish with 3 quick self-check questions."}[S.mode];
+  if(!sample){S.chat.push({role:"user",content:text});S.chat.push({role:"assistant",content:offlineAnswer(hits),sources:hits.slice(0,3).map(h=>({doc:h.doc,title:h.title}))});q.value="";$("#chat").innerHTML=S.chat.map(msgHtml).join("");return}
   const ctx=hits.length?"Reference excerpts:\n"+hits.map((h,k)=>`[S${k+1}] ${h.title}\n${h.text}`).join("\n\n"):"No reference excerpts matched.";
   const history=S.chat.filter(m=>m.content).slice(-10).map(m=>({role:m.role,content:m.content}));
   S.chat.push({role:"user",content:text});const a={role:"assistant",content:"",sources:hits.map(h=>({doc:h.doc,title:h.title}))};S.chat.push(a);
@@ -651,7 +942,7 @@ function vTrain(){
   return head(t("nav_train"),t("train_sub"))+dataNotice()+`
   <div class="panel"><div class="spread"><h3 style="margin:0">${esc(t("my_plan"))}</h3>${plan?`<span class="small muted">${fmtDate(plan.at)}</span>`:""}</div>
    ${plan?`<div class="md" style="margin-top:10px">${md(plan.md)}</div>`:""}
-   <div class="row" style="margin-top:12px;align-items:flex-end"><label class="f" style="flex:1 1 280px">${esc(t("plan_goal"))}<input class="i" id="goal" placeholder="${esc(t("plan_goal_ph"))}"></label><button class="btn ${plan?"":"primary"}" data-act="plan" ${sample?"":"disabled"}>${esc(plan?t("regenerate"):t("make_plan"))}</button></div><div id="planOut"></div></div>
+   <div class="row" style="margin-top:12px;align-items:flex-end"><label class="f" style="flex:1 1 280px">${esc(t("plan_goal"))}<input class="i" id="goal" placeholder="${esc(t("plan_goal_ph"))}"></label><button class="btn ${plan?"":"primary"}" data-act="plan">${esc(plan?t("regenerate"):t("make_plan"))}</button></div><div id="planOut"></div></div>
   ${LEVELS.map(lv=>`<section class="stack"><div class="lvl-head"><h2>${esc(t("lv_"+lv))}</h2><span class="muted small mono">${XP_AT[LEVELS.indexOf(lv)]}+ ${esc(t("xp"))}</span></div>
    <div class="grid g3">${COURSES.filter(c=>c.lv===lv).map(c=>{const d=(S.st.progress[c.id]||[]).length;const cert=S.st.certs.find(x=>x.courseId===c.id);
     return `<button class="panel course" data-open-course="${c.id}"><div class="spread" style="width:100%"><span class="chip">${esc(catName(c.cat))}</span>${cert?`<span class="chip ok">✓ ${esc(t("certs"))}</span>`:""}</div><h3>${esc(c.t)}</h3><p class="small muted">${esc(c.d)}</p><div style="width:100%"><div class="bar"><i style="width:${Math.round(d/c.ls.length*100)}%"></i></div><p class="small muted mono" style="margin-top:5px">${d}/${c.ls.length} ${esc(t("lessons"))}</p></div></button>`}).join("")}</div></section>`).join("")}`;
@@ -674,6 +965,7 @@ async function openLesson(i,force=false){
   const key=`${c.id}--${i}--${S.lang}`;
   try{
     if(db&&!force){const s=await db.doc("ea_lessons/"+key).get();if(s.exists&&s.data().md){S.lesson.md=s.data().md;return renderView()}}
+    if(!sample){S.lesson.md=offlineLesson(c,i);return renderView()}
     const prompt=`${SYSTEM()}\n\nWrite a training lesson for an electrical maintenance technician.\nCourse: ${c.t} (${c.lv} level). Course summary: ${c.d}\nLesson ${i+1} of ${c.ls.length}: ${c.ls[i]}\nOther lessons in the course: ${c.ls.join("; ")}\n\nStructure with Markdown headings: Learning objectives; Key concepts (with typical values and units); Step by step or worked example from a real facility; Safety notes; Common mistakes; Quick check (3 questions, each answer inside <details><summary>Answer</summary>...</details>). About 700-900 words. Write in ${LANGNAME[S.lang]}.`;
     const out=await ai(prompt,{onText:({text})=>{if(S.lesson&&S.lesson.i===i){S.lesson.md=text;const b=$("#lessonBody");if(b)b.innerHTML=md(text)}}});
     if(!S.lesson||S.lesson.i!==i)return;
@@ -683,6 +975,7 @@ async function openLesson(i,force=false){
 }
 async function makePlan(){
   const goal=$("#goal")?.value||"";const out=$("#planOut");
+  if(!sample){S.st.plan={md:offlinePlan(goal),goal,at:Date.now()};saveState();return renderView()}
   out.innerHTML=`<p class="muted" style="margin-top:10px"><span class="typing"><i></i><i></i><i></i></span></p>`;
   const prog=COURSES.map(c=>`${c.t} [${c.lv}]: ${(S.st.progress[c.id]||[]).length}/${c.ls.length} lessons${S.st.certs.find(x=>x.courseId===c.id)?", certified":""}`).join("\n");
   const att=S.st.attempts.slice(0,8).map(a=>`${a.course}: ${a.score}%`).join("; ")||"none";
@@ -698,7 +991,7 @@ function vExam(){
   const form=`<div class="panel"><div class="row" style="align-items:flex-end">
     <label class="f" style="flex:2 1 260px">${esc(t("topic"))}<select class="i" id="qc">${LEVELS.map(lv=>`<optgroup label="${esc(t("lv_"+lv))}">${COURSES.filter(c=>c.lv===lv).map(c=>`<option value="${c.id}">${esc(c.t)}</option>`).join("")}</optgroup>`).join("")}</select></label>
     <div class="f" style="flex:1 1 260px"><span>&nbsp;</span><div class="seg" role="group"><button data-qmode="quiz" aria-pressed="${(S.qmode||"quiz")==="quiz"}">${esc(t("quiz"))} · ${esc(t("q5"))}</button><button data-qmode="exam" aria-pressed="${S.qmode==="exam"}">${esc(t("exam"))} · ${esc(t("q10"))}</button></div></div>
-    <button class="btn primary" data-act="gen-quiz" ${sample?"":"disabled"}>${esc(t("generate"))}</button></div></div>`;
+    <button class="btn primary" data-act="gen-quiz">${esc(t("generate"))}</button></div></div>`;
   let body="";
   if(q&&q.loading)body=`<div class="panel"><p class="muted"><span class="typing"><i></i><i></i><i></i></span> ${esc(t("generating"))}</p></div>`;
   else if(q&&q.questions){
@@ -718,6 +1011,8 @@ after.exam=()=>{const s=$("#qc");if(s&&S.qcourse)s.value=S.qcourse;if(s)s.onchan
 const certHtml=c=>`<div class="cert"><span class="label">${esc(t("cert_title"))}</span><h3>${esc(c.name||"")}</h3><p class="small muted">${esc(t("cert_line"))}</p><b>${esc(c.course)}</b><p class="small"><span class="chip acc">${esc(t("lv_"+c.level))}</span> <span class="mono">${c.score}%</span></p><p class="small muted mono">${esc(t("cert_code"))} ${esc(c.code)} · ${fmtDate(c.at)}</p><button class="btn sm" data-cert="${esc(c.code)}">${ic("dl")}${esc(t("download_pdf"))}</button></div>`;
 async function genQuiz(){
   const cid=$("#qc")?.value||S.qcourse||COURSES[0].id;S.qcourse=cid;const c=COURSES.find(x=>x.id===cid);const mode=S.qmode||"quiz";const n=mode==="exam"?10:5;
+  if(!sample){const bank=QBANK[cid]||[];const pick=shuffle(bank).slice(0,mode==="exam"?bank.length:5).map(([q,opts,ans,ex])=>{const o=shuffle([0,1,2,3]);return {q,options:o.map(k=>opts[k]),answer:o.indexOf(ans),explain:ex}});
+    S.quiz={questions:pick,answers:{},mode,course:c.t,courseId:c.id,level:c.lv};return renderView()}
   S.quiz={loading:true};renderView();
   try{
     const r=await ai(`You write assessment questions for electrical maintenance technicians.\nCourse: ${c.t} (${c.lv} level). Topics: ${c.ls.join("; ")}.\nWrite ${n} multiple-choice questions${mode==="exam"?" for a certification exam covering every topic, mixing recall, applied calculation and practical scenario questions":" for practice"}. Each has exactly 4 options and one correct answer. Vary the position of the correct answer. Include at least one safety question. Make wrong options plausible.\nWrite questions, options and explanations in ${LANGNAME[S.lang]}.\nReturn JSON only: {"questions":[{"q":"...","options":["...","...","...","..."],"answer":0,"explain":"one or two sentences on why"}]}`,{json:true});
@@ -739,13 +1034,30 @@ function grade(){
   addXp(xp);renderView();
 }
 
+/* ---------- built-in fallbacks (no AI server) ---------- */
+const shuffle=arr=>{const x=[...arr];for(let i=x.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[x[i],x[j]]=[x[j],x[i]]}return x};
+function offlineAnswer(hits){
+  if(!hits.length)return "**"+t("offline_chat")+"**\n\n"+t("offline_none");
+  return "**"+t("offline_chat")+"**\n\n"+hits.slice(0,3).map((h,k)=>`**[S${k+1}] ${h.title}**\n\n${h.text.slice(0,900)}${h.text.length>900?"…":""}`).join("\n\n---\n\n");
+}
+function offlineLesson(c,i){
+  const hits=searchKb(c.ls[i]+" "+c.t,2);
+  return `## ${c.ls[i]}\n\n_${c.d}_\n\n### ${t("offline_outline")}\n${c.ls.map((l,k)=>k===i?`- **${l}**`:`- ${l}`).join("\n")}\n\n${hits.length?`### ${t("offline_related")}\n\n`+hits.map(h=>`**${h.title}**\n\n${h.text.slice(0,1100)}…`).join("\n\n"):""}\n\n> ${t("offline_lesson")}`;
+}
+function offlinePlan(goal){
+  const lv=levelOf(S.st.xp);
+  const todo=COURSES.filter(c=>(S.st.progress[c.id]||[]).length<c.ls.length).sort((a,b)=>Math.abs(LEVELS.indexOf(a.lv)-lv)-Math.abs(LEVELS.indexOf(b.lv)-lv)||LEVELS.indexOf(a.lv)-LEVELS.indexOf(b.lv)).slice(0,4);
+  const rows=todo.map((c,k)=>`| ${k*2+1}–${k*2+2} | ${c.t} (${c.ls.length} ${t("lessons")}) | ${t("quiz")} + ${t("nav_sim")}: ${catName(c.cat||CATS[k%CATS.length])} | ${t("exam")} ≥ 80% |`).join("\n");
+  return `${goal?`**${t("plan_goal")}:** ${goal}\n\n`:""}| # | ${t("nav_train")} | ${t("quick_actions")} | ✓ |\n|---|---|---|---|\n${rows}`;
+}
+
 /* ---------- simulator ---------- */
 function vSim(){
   const s=S.sim;
   const form=`<div class="panel"><div class="row" style="align-items:flex-end">
     <div class="f" style="flex:2 1 300px"><span>${esc(t("equipment"))}</span><div class="seg" role="group">${CATS.map(c=>`<button data-simcat="${c}" aria-pressed="${(S.simCat||"generator")===c}">${esc(catName(c))}</button>`).join("")}</div></div>
     <div class="f" style="flex:1 1 200px"><span>${esc(t("difficulty"))}</span><div class="seg" role="group">${["easy","medium","hard"].map(d=>`<button data-simdiff="${d}" aria-pressed="${(S.simDiff||"medium")===d}">${esc(t("d_"+d))}</button>`).join("")}</div></div>
-    <button class="btn primary" data-act="sim-start" ${sample?"":"disabled"}>${esc(s&&s.sc?t("new_sim"):t("start_sim"))}</button></div></div>`;
+    <button class="btn primary" data-act="sim-start">${esc(s&&s.sc?t("new_sim"):t("start_sim"))}</button></div></div>`;
   if(!s)return head(t("nav_sim"),t("sim_sub"))+aiNotice()+form+simHistory();
   if(s.loading)return head(t("nav_sim"),t("sim_sub"))+form+`<div class="panel"><p class="muted"><span class="typing"><i></i><i></i><i></i></span> ${esc(t("building_sim"))}</p></div>`;
   const sc=s.sc;
@@ -758,7 +1070,10 @@ function vSim(){
     <p class="label" style="margin-top:12px">${esc(t("readings"))}</p><div class="readings">${Object.entries(s.readings||{}).map(([k,v])=>`<div class="reading"><span class="small muted">${esc(k)}</span><div class="v">${esc(v)}</div></div>`).join("")}</div>
    </div>
    <div class="panel stack"><div class="log" id="simlog">${s.log.map(l=>`<div class="e ${l.role==="me"?"me":""} ${l.flag?"flag":""}"><span class="label">${l.role==="me"?"▶":"◆"}</span><div class="${l.role==="me"?"":"md"}">${l.role==="me"?esc(l.text):md(l.text)}</div>${l.flag?`<span class="chip bad">⚠ ${esc(l.flag)}</span>`:""}</div>`).join("")}${s.busy?`<span class="typing"><i></i><i></i><i></i></span>`:""}</div>
-    ${s.debrief?"":`<div class="row" style="gap:6px">${["qa_loto","qa_alarms","qa_visual","qa_measure"].map(k=>`<button class="btn sm" data-simq="${k}">${esc(t(k))}</button>`).join("")}</div>
+    ${s.debrief?"":s.offline?`<button class="btn ${s.locked?"":"primary"}" data-act="sim-loto" ${s.locked?"disabled":""}>🔒 ${esc(s.locked?t("offline_locked"):t("qa_loto"))}</button>
+    <div class="row" style="gap:6px">${s.sc.checks.map((c,i)=>`<button class="btn sm" data-simcheck="${i}" ${s.done.includes(i)?"disabled":""}>${esc(c.label)}</button>`).join("")}</div>
+    <p class="label">${esc(t("your_diag"))}</p>${s.sc.options.map((o,i)=>`<label class="opt"><input type="radio" name="simopt" value="${i}"><span>${esc(o)}</span></label>`).join("")}
+    <div><button class="btn primary" data-act="sim-diag">${esc(t("diagnose"))}</button></div>`:`<div class="row" style="gap:6px">${["qa_loto","qa_alarms","qa_visual","qa_measure"].map(k=>`<button class="btn sm" data-simq="${k}">${esc(t(k))}</button>`).join("")}</div>
     <div class="row"><input class="i" id="simact" style="flex:1 1 220px" placeholder="${esc(t("action_ph"))}"><button class="btn primary" data-act="sim-do" ${s.busy?"disabled":""}>${esc(t("do_it"))}</button></div>
     <label class="f">${esc(t("your_diag"))}<textarea class="i" id="simdiag" placeholder="${esc(t("diag_ph"))}"></textarea></label><div><button class="btn" data-act="sim-diag" ${s.busy?"disabled":""}>${esc(t("diagnose"))}</button></div>`}
    </div></div>
@@ -771,7 +1086,11 @@ function vSim(){
 function simHistory(){return S.st.sims.length?`<section class="stack"><h2>${esc(t("history"))}</h2><div class="tbl"><table><thead><tr><th>${esc(t("date"))}</th><th>${esc(t("equipment"))}</th><th>${esc(t("title"))}</th><th>${esc(t("score"))}</th></tr></thead><tbody>${S.st.sims.slice(0,10).map(x=>`<tr><td>${fmtDate(x.at)}</td><td>${esc(catName(x.cat))}</td><td>${esc(x.title)}</td><td class="num">${x.score}</td></tr>`).join("")}</tbody></table></div></section>`:""}
 after.sim=()=>{const i=$("#simact");if(i)i.addEventListener("keydown",e=>{if(e.key==="Enter")simDo()});const l=$("#simlog");if(l)l.scrollTop=l.scrollHeight};
 async function simStart(){
-  const cat=S.simCat||"generator",diff=S.simDiff||"medium";S.sim={loading:true};renderView();
+  const cat=S.simCat||"generator",diff=S.simDiff||"medium";
+  if(!sample){const pool=SIMS.filter(x=>x.cat===cat);const same=pool.filter(x=>x.diff===diff);let opts=(same.length?same:pool).filter(x=>x.title!==S.sim?.sc?.title);if(!opts.length)opts=pool;
+    const sc={...opts[Math.floor(Math.random()*opts.length)]};sc.hidden={fault:sc.options[sc.answer],root_cause:""};
+    S.sim={offline:true,cat,diff:sc.diff,sc,readings:{...sc.readings},alarms:[...sc.alarms],log:[],locked:false,flags:[],done:[]};return renderView()}
+  S.sim={loading:true};renderView();
   try{
     const sc=await ai(`You run a fault-finding simulator for electrical maintenance technicians. Create one realistic fault scenario.\nEquipment type: ${cat}. Difficulty: ${diff} (easy = single obvious fault; medium = needs 3-5 checks; hard = misleading symptom or two interacting issues).\nUse a realistic facility setting (data centre, hospital, office HQ) with plausible ratings and readings. Do not reveal the fault in the visible fields.\nWrite all text in ${LANGNAME[S.lang]} (keys stay in English).\nReturn JSON only: {"title":"short","equipment":"make-agnostic description with ratings, e.g. 600 kVA 400/230 V diesel genset","context":"2-3 sentences: site, what happened, who called","symptoms":["..."],"alarms":["controller alarm text"],"readings":{"label with unit":"value"},"hidden":{"fault":"the actual fault","root_cause":"why it happened","correct_fix":"repair","key_checks":["checks an expert would do in order"],"safety_critical":["safety steps required before hands-on work"]}}`,{json:true,tier:"complex"});
     if(!sc||!sc.title||!sc.hidden)throw {message:"bad scenario"};
@@ -790,8 +1109,22 @@ async function simDo(text){
   }catch(e){s.log.push({role:"sim",text:"_"+errMsg(e)+"_"})}
   s.busy=false;if(S.view==="sim")renderView();
 }
+function simLoto(){const s=S.sim;if(!s||s.locked)return;s.locked=true;s.log.push({role:"me",text:t("qa_loto")});const fl=s.sc.lotoFlag||"";if(fl)s.flags.push(fl);s.log.push({role:"sim",text:s.sc.loto,flag:fl});renderView()}
+function simCheck(i){
+  const s=S.sim,c=s.sc.checks[i];s.done.push(i);s.log.push({role:"me",text:c.label});
+  if(c.flag){s.flags.push(c.flag);s.log.push({role:"sim",text:c.result,flag:c.flag})}
+  else if(c.hands&&!s.locked){const f=t("offline_unsafe");s.flags.push(f);s.done.pop();s.log.push({role:"sim",text:t("offline_isolate_first"),flag:f})}
+  else if(c.live&&s.locked){s.log.push({role:"sim",text:t("offline_isolated")})}
+  else s.log.push({role:"sim",text:c.result});
+  renderView();
+}
 async function simDiag(){
-  const s=S.sim;const d=$("#simdiag")?.value.trim();if(!d||!s)return;
+  const s=S.sim;
+  if(s&&s.offline){const pick=document.querySelector('input[name="simopt"]:checked');if(!pick)return toast(t("answer_all"));
+    const right=+pick.value===s.sc.answer;const keys=s.sc.checks.map((c,i)=>c.key?i:-1).filter(i=>i>=0);const kd=keys.filter(i=>s.done.includes(i)).length;const extra=s.done.filter(i=>!s.sc.checks[i].key).length;
+    const score=Math.round((right?50:0)+Math.max(0,25-12.5*s.flags.length)+Math.max(0,Math.min(25,kd/keys.length*25-3*extra)));
+    s.debrief={score,feedback:(right?"✓ ":"✗ ")+s.sc.explain,safety:[...new Set(s.flags)],ideal:s.sc.ideal};
+    S.st.sims.unshift({cat:s.cat,title:s.sc.title,score,at:Date.now()});S.st.sims=S.st.sims.slice(0,40);addXp(score>=70?30:10);return renderView()}const d=$("#simdiag")?.value.trim();if(!d||!s)return;
   s.busy=true;renderView();
   try{
     const r=await ai(`Score a technician's fault-finding exercise as a strict but fair senior engineer.\nScenario with the real fault: ${JSON.stringify(s.sc)}\nTechnician's steps: ${JSON.stringify(s.log.map(l=>(l.role==="me"?"TECH: ":"SIM: ")+l.text+(l.flag?" [SAFETY FLAG: "+l.flag+"]":"")))}\nTechnician's diagnosis and repair: ${d}\nScoring: diagnosis correctness 50, logical efficient checks 25, safety behaviour 25 (deduct for every safety flag and for skipping isolation before hands-on work).\nWrite text in ${LANGNAME[S.lang]}.\nReturn JSON only: {"score":0-100,"feedback":"Markdown, 80-150 words: what was right, what was missed","safety":["safety remarks"],"ideal":["expert step-by-step path"]}`,{json:true});
@@ -860,7 +1193,7 @@ function vParts(){
   return head(t("nav_parts"),t("parts_sub"))+`
   <div class="panel stack"><h3 style="margin:0">${esc(t("advisor"))}</h3>
    <div class="row" style="align-items:flex-end"><label class="f" style="flex:0 1 200px">${esc(t("equipment"))}<select class="i" id="advCat">${CATS.map(c=>`<option value="${c}" ${S.advCat===c?"selected":""}>${esc(catName(c))}</option>`).join("")}</select></label>
-   <label class="f" style="flex:1 1 300px">${esc(t("why"))}<input class="i" id="advQ" placeholder="${esc(t("advisor_ph"))}" value="${esc(S.advQ||"")}"></label><button class="btn primary" data-act="advise" ${sample?"":"disabled"}>${esc(t("recommend"))}</button></div>
+   <label class="f" style="flex:1 1 300px">${esc(t("why"))}<input class="i" id="advQ" placeholder="${esc(t("advisor_ph"))}" value="${esc(S.advQ||"")}"></label><button class="btn primary" data-act="advise">${esc(t("recommend"))}</button></div>
    <div id="advOut">${adv?(adv.loading?`<span class="typing"><i></i><i></i><i></i></span>`:adviceHtml(adv,stockChip)):aiNotice()}</div></div>
   <section class="stack"><div class="spread"><h2>${esc(t("catalogue"))}</h2><div class="row"><input class="i" id="pq" style="width:min(260px,100%)" placeholder="${esc(t("search"))}" value="${esc(S.partsQ)}"><select class="i" id="pcat" style="width:auto">${["all",...CATS].map(c=>`<option value="${c}" ${S.partsCat===c?"selected":""}>${esc(c==="all"?t("all"):catName(c))}</option>`).join("")}</select></div></div>
   <div class="tbl"><table><thead><tr><th>${esc(t("pn"))}</th><th>${esc(t("part"))}</th><th>${esc(t("equipment"))}</th><th>${esc(t("fits"))}</th><th>${esc(t("stock"))}</th><th>${esc(t("lead"))}</th><th>${esc(t("price"))}</th><th>${esc(t("crit"))}</th></tr></thead>
@@ -874,7 +1207,11 @@ function adviceHtml(a,stockChip){
 }
 after.parts=()=>{const q=$("#pq"),c=$("#pcat");const upd=()=>{S.partsQ=q.value;S.partsCat=c.value;const pos=q.selectionStart;renderView();const n=$("#pq");n.focus();try{n.setSelectionRange(pos,pos)}catch{}};q.oninput=upd;c.onchange=upd};
 async function advise(){
-  S.advCat=$("#advCat").value;S.advQ=$("#advQ").value.trim();if(!S.advQ)return;S.advice={loading:true};renderView();
+  S.advCat=$("#advCat").value;S.advQ=$("#advQ").value.trim();if(!S.advQ)return;
+  if(!sample){const qt=toks(S.advQ);const sc=p=>{const h=toks(p.n+" "+p.pn+" "+p.fits.join(" ")+" "+p.mfr);return qt.filter(w=>h.includes(w)).length};
+    const recs=PARTS.filter(p=>p.cat===S.advCat).map(p=>({p,s:sc(p)})).sort((a,b)=>b.s-a.s||(a.p.crit==="critical"?-1:1)).slice(0,6);
+    S.advice={recommendations:recs.map(r=>({pn:r.p.pn,qty:1,reason:r.s?t("offline_match"):t("offline_fits")+" "+catName(S.advCat)})),also:[],notes:t("offline_parts")};return renderView()}
+  S.advice={loading:true};renderView();
   try{
     const r=await ai(`You are a spare-parts advisor for electrical maintenance. Recommend parts from the catalogue for the task or symptom. Only use part numbers that exist in the catalogue; put anything else that may be needed (consumables, parts not stocked) in "also". Prefer parts that fit the equipment. Mention stock or lead-time risks in notes.\nEquipment type: ${S.advCat}\nTask or symptom: ${S.advQ}\nEquipment register: ${JSON.stringify(EQUIPMENT.map(e=>({tag:e.tag,name:e.n,cat:e.cat,model:e.mfr+" "+e.model})))}\nCatalogue: ${JSON.stringify(PARTS.map(p=>({pn:p.pn,name:p.n,cat:p.cat,fits:p.fits,stock:p.stock,min:p.min,lead_days:p.lead})))}\nWrite text in ${LANGNAME[S.lang]}.\nReturn JSON only: {"recommendations":[{"pn":"","qty":1,"reason":""}],"also":[""],"notes":"short Markdown"}`,{json:true});
     S.advice=r||{};
@@ -888,7 +1225,7 @@ function vKb(){
   const res=S.kbQ?searchKb(S.kbQ,8):null;
   return head(t("nav_kb"),t("kb_sub"))+`
   <div class="panel stack"><div class="row"><input class="i" id="kbq" style="flex:1 1 260px" placeholder="${esc(t("kb_search_ph"))}" value="${esc(S.kbQ)}"><button class="btn primary" data-act="kb-search">${esc(t("search"))}</button></div>
-   <div id="kbres">${res?(res.length?`<div class="list">${res.map(r=>`<div class="item" style="align-items:flex-start"><div class="t"><b>${esc(r.title)}</b><p class="small muted" style="margin-top:4px">${highlight(r.text.slice(0,420),S.kbQ)}…</p></div><button class="btn sm" data-kbdoc="${esc(r.doc)}">${esc(t("open"))}</button></div>`).join("")}</div><div style="margin-top:10px"><button class="btn" data-act="kb-ask" ${sample?"":"disabled"}>${ic("chat")}${esc(t("ask_ai"))}</button></div>`:`<p class="muted">${esc(t("no_results"))}</p>`):""}</div></div>
+   <div id="kbres">${res?(res.length?`<div class="list">${res.map(r=>`<div class="item" style="align-items:flex-start"><div class="t"><b>${esc(r.title)}</b><p class="small muted" style="margin-top:4px">${highlight(r.text.slice(0,420),S.kbQ)}…</p></div><button class="btn sm" data-kbdoc="${esc(r.doc)}">${esc(t("open"))}</button></div>`).join("")}</div><div style="margin-top:10px"><button class="btn" data-act="kb-ask">${ic("chat")}${esc(t("ask_ai"))}</button></div>`:`<p class="muted">${esc(t("no_results"))}</p>`):""}</div></div>
   ${db&&S.canWrite?`<div class="drop" id="drop" tabindex="0" role="button">${ic("plus","")}<p>${esc(t("drop"))}</p><input type="file" id="kbfile" multiple accept=".pdf,.txt,.md,text/plain,application/pdf" hidden></div><div id="upStatus" class="small muted"></div>`:`<div class="notice">${esc(t("guest_kb"))}</div>`}
   <section class="stack"><h2>${esc(t("kb_docs"))}</h2><div class="panel"><div class="list">${docs.map(d=>`<div class="item"><div class="t"><b>${esc(d.title)}</b><div class="small muted">${d.builtin?`<span class="chip acc">${esc(t("builtin"))}</span>`:`<span class="chip">${esc(t("uploaded"))}</span> ${esc(d.byName||"")} · ${fmtDate(d.at)} · ${d.n||0} ${esc(t("chunks"))}`}</div></div><button class="btn sm" data-kbdoc="${esc(d.id)}">${esc(t("open"))}</button></div>`).join("")}</div></div></section>
   <div id="kbview"></div>`;
@@ -972,6 +1309,7 @@ document.addEventListener("click",e=>{
   if(d.simcat){S.simCat=d.simcat;document.querySelectorAll("[data-simcat]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.simcat===S.simCat));return}
   if(d.simdiff){S.simDiff=d.simdiff;document.querySelectorAll("[data-simdiff]").forEach(b=>b.setAttribute("aria-pressed",b.dataset.simdiff===S.simDiff));return}
   if(d.simq)return simDo(t(d.simq));
+  if(d.simcheck!=null)return simCheck(+d.simcheck);
   if(d.repf){S.repFilter=d.repf;return renderView()}
   if(d.rep){const r=S.reports.find(x=>x.id===d.rep);S.editing={...r};S.view="rep";return renderShell()}
   const A={
@@ -981,7 +1319,7 @@ document.addEventListener("click",e=>{
     "lesson-redo":()=>openLesson(S.lesson.i,true),
     "lesson-pdf":()=>{const c=COURSES.find(x=>x.id===S.course);exportDoc(`lesson-${c.id}-${S.lesson.i+1}`,c.ls[S.lesson.i],[`${c.t} · ${c.lv}`],[["",S.lesson.md.replace(/<\/?(details|summary)>/g,"").replace(/^#+\s*/gm,"")]])},
     plan:makePlan,"gen-quiz":genQuiz,grade,
-    "sim-start":simStart,"sim-do":()=>simDo(),"sim-diag":simDiag,
+    "sim-start":simStart,"sim-loto":simLoto,"sim-do":()=>simDo(),"sim-diag":simDiag,
     "rep-new":()=>{S.editing={type:"preventive",status:"open",date:new Date().toISOString().slice(0,10)};renderView()},"rep-back":()=>{S.editing=null;renderView()},
     "rep-draft":repDraft,"rep-save":repSave,"rep-pdf":repPdf,
     "rep-del":()=>{$("#delZone").innerHTML=`<span class="small">${esc(t("confirm_delete"))}</span> <button class="btn danger" data-act="rep-del-yes">${esc(t("yes"))}</button>`},
@@ -1037,6 +1375,9 @@ I18N.ar.ai_off="ميزات الذكاء الاصطناعي متوقفة حتى �
 Object.assign(I18N.en,{team_signin:"Team sign in",sign_out:"Sign out",signin_sub:"Optional. Team members sign in to share reports and documents and to keep progress across devices.",signin_help:"Accounts are the same as the Electrical Unit app. Create one there, then ask the supervisor to add you to the team:",member_yes:"Team member: shared reports and documents are on.",member_no:"Signed in, but not on the team yet. Ask the supervisor to add you in the Electrical Unit Team tab.",data_off:"You're using the app as a guest. Your progress is saved on this device. Team members can sign in to share reports and documents.",guest_save:"Only signed-in team members can save shared reports. You can still download the PDF.",guest_kb:"Guests can search the built-in procedures. Team members sign in to see and add the team's documents.",ai_off:"The AI features aren't switched on yet. Training content, the catalogue and library search still work."});
 Object.assign(I18N.fr,{team_signin:"Connexion équipe",sign_out:"Se déconnecter",signin_sub:"Facultatif. Les membres de l'équipe se connectent pour partager rapports et documents et retrouver leur progression partout.",signin_help:"Mêmes comptes que l'application Electrical Unit. Créez-en un, puis demandez au superviseur de vous ajouter :",member_yes:"Membre de l'équipe : rapports et documents partagés activés.",member_no:"Connecté, mais pas encore dans l'équipe. Demandez au superviseur de vous ajouter.",data_off:"Vous utilisez l'application en invité. Votre progression est enregistrée sur cet appareil. Les membres de l'équipe peuvent se connecter pour partager rapports et documents.",guest_save:"Seuls les membres connectés peuvent enregistrer des rapports partagés. Vous pouvez toujours télécharger le PDF.",guest_kb:"Les invités peuvent chercher dans les procédures intégrées. Les membres se connectent pour voir et ajouter les documents de l'équipe.",ai_off:"Les fonctions IA ne sont pas encore activées. Les cours, le catalogue et la recherche restent disponibles."});
 Object.assign(I18N.ar,{team_signin:"دخول الفريق",sign_out:"تسجيل الخروج",signin_sub:"اختياري. يسجّل أعضاء الفريق الدخول لمشاركة التقارير والمستندات وحفظ التقدّم على كل الأجهزة.",signin_help:"الحسابات نفسها في تطبيق Electrical Unit. أنشئ حساباً هناك ثم اطلب من المشرف إضافتك:",member_yes:"عضو في الفريق: التقارير والمستندات المشتركة مفعّلة.",member_no:"تم تسجيل الدخول لكنك لست في الفريق بعد. اطلب من المشرف إضافتك.",data_off:"أنت تستخدم التطبيق كزائر. يُحفظ تقدّمك على هذا الجهاز. يمكن لأعضاء الفريق تسجيل الدخول لمشاركة التقارير والمستندات.",guest_save:"فقط أعضاء الفريق المسجّلون يمكنهم حفظ التقارير المشتركة. يمكنك تنزيل PDF.",guest_kb:"يمكن للزوار البحث في الإجراءات المدمجة. يسجّل أعضاء الفريق الدخول لرؤية مستندات الفريق وإضافتها.",ai_off:"ميزات الذكاء الاصطناعي غير مفعّلة بعد. الدورات والكتالوج والبحث متاحة."});
+Object.assign(I18N.en,{q10:"Full exam, pass mark 80%",offline_chat:"AI answers are not switched on yet. Here are the most relevant parts of the built-in procedures:",offline_none:"No procedure matches these words. Try terms like generator, UPS battery, ATS, megger, breaker or LOTO.",offline_outline:"Lessons in this course",offline_related:"From the procedures library",offline_lesson:"The full written lesson appears here when AI is switched on. You can still mark it complete, take the quiz and practise in the simulator.",offline_match:"Matches your description",offline_fits:"Used on",offline_parts:"Built-in match by equipment type and keywords. Detailed AI advice appears when AI is switched on.",offline_unsafe:"Hands-on work without isolation",offline_isolate_first:"Stop. This check needs hands-on access. Isolate the equipment first (lockout/tagout and prove dead).",offline_isolated:"The equipment is isolated, so live readings are now zero. Take live readings before isolating.",offline_locked:"Isolated and locked out",ai_off:"AI is not switched on yet, so the app uses its built-in scenarios, questions and procedures."});
+Object.assign(I18N.fr,{q10:"Examen complet, seuil 80 %",offline_chat:"Les réponses IA ne sont pas encore activées. Voici les passages les plus pertinents des procédures intégrées :",offline_none:"Aucune procédure ne correspond. Essayez generator, UPS battery, ATS, megger, breaker ou LOTO.",offline_outline:"Leçons de ce cours",offline_related:"Extraits des procédures",offline_lesson:"La leçon complète apparaîtra ici quand l'IA sera activée. Vous pouvez déjà la marquer terminée, passer le quiz et vous entraîner au simulateur.",offline_match:"Correspond à votre description",offline_fits:"Utilisé sur",offline_parts:"Correspondance intégrée par équipement et mots-clés. Les conseils IA détaillés apparaîtront quand l'IA sera activée.",offline_unsafe:"Intervention sans consignation",offline_isolate_first:"Stop. Cette vérification nécessite une intervention. Consignez d'abord l'équipement (cadenas, étiquette, VAT).",offline_isolated:"L'équipement est consigné : les mesures sous tension sont à zéro. Faites-les avant de consigner.",offline_locked:"Consigné et cadenassé",ai_off:"L'IA n'est pas encore activée : l'application utilise ses scénarios, questions et procédures intégrés."});
+Object.assign(I18N.ar,{q10:"امتحان كامل، النجاح 80٪",offline_chat:"إجابات الذكاء الاصطناعي غير مفعّلة بعد. هذه أهم الفقرات من الإجراءات المدمجة:",offline_none:"لا يوجد إجراء مطابق. جرّب كلمات مثل generator أو UPS battery أو ATS أو megger أو LOTO.",offline_outline:"دروس هذه الدورة",offline_related:"من مكتبة الإجراءات",offline_lesson:"سيظهر الدرس الكامل هنا عند تفعيل الذكاء الاصطناعي. يمكنك الآن تحديده كمكتمل وأداء الاختبار والتدرّب في المحاكي.",offline_match:"يطابق وصفك",offline_fits:"يُستخدم في",offline_parts:"مطابقة مدمجة حسب نوع الجهاز والكلمات. تظهر نصائح الذكاء الاصطناعي عند تفعيله.",offline_unsafe:"عمل يدوي بدون عزل",offline_isolate_first:"توقّف. هذا الفحص يتطلب عملاً يدوياً. اعزل الجهاز أولاً (قفل وبطاقة وتأكد من انعدام الجهد).",offline_isolated:"الجهاز معزول، لذا القراءات الحيّة صفر. خذ القراءات قبل العزل.",offline_locked:"معزول ومقفل",ai_off:"الذكاء الاصطناعي غير مفعّل بعد، لذلك يستخدم التطبيق السيناريوهات والأسئلة والإجراءات المدمجة."});
 const hv=(location.hash||"").slice(1);if(VIEWS.some(v=>v[0]===hv))S.view=hv;
 S.st={...S.st,...store.get("guest_state",{})};renderShell();
 firebase.initializeApp(window.EU_CONFIG.firebase);
