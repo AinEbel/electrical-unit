@@ -150,6 +150,11 @@ label.f select{width:100%;padding:10px 12px;border:1px solid var(--line);border-
 .toast.u{background:var(--urgent);color:#fff}
 /* Convoy: weekly critical staff list (supervisor only) */
 .cvgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.secs{display:flex;gap:6px;flex-wrap:wrap}
+.secs .car[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.secs .car[aria-pressed="true"] b{color:var(--accent-ink)}
+.sechead{display:flex;align-items:baseline;gap:8px;margin:6px 0 0;padding-bottom:6px;border-bottom:1px solid var(--line);font:800 15px/1.2 var(--f-label);letter-spacing:.04em;color:var(--accent)}
+.sechead span{font:500 13px/1.2 var(--f-body);color:var(--muted);letter-spacing:0}
 .cvcard{display:flex;flex-direction:column;gap:8px;opacity:.6}
 .cvcard.on{opacity:1;border-color:var(--ok)}
 .cvcard .pick{display:flex;align-items:center;gap:10px;cursor:pointer;min-width:0}
@@ -191,7 +196,7 @@ label.f select{width:100%;padding:10px 12px;border:1px solid var(--line);border-
   <div class="wrap">
     <div class="brand">
       <div class="bolt" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg></div>
-      <div><h1>Critical Staff</h1><div class="sub">Naqoura - Sector West · v20</div></div>
+      <div><h1>Critical Staff</h1><div class="sub">Naqoura - Sector West · v21</div></div>
       <div class="me" id="me"></div>
     </div>
     <nav class="tabs" id="tabs" aria-label="Sections"></nav>
@@ -225,7 +230,7 @@ const MARKS = [['P','Present'],['A','Absent'],['L','Leave'],['S','Sick'],['O','O
 
 const S = { user:null, email:'', owner:false, me:null, team:{}, attendance:{}, notes:[], loaded:false,
   tab: remember('eu.tab') || 'convoy', orders:[], support:[], orderFilter:'open', supportFilter:'pending', openSupportId:null, openOrder:null, month: ym(new Date()), noteFilter:'pending', sites:[], readings:{}, kMonth: ym(new Date()), kFind:'', authMode:'signin', authMsg:'',
-  cvStaff:[], cvLoaded:false, cvCards:{}, cv:{date:'', direction:''}, cvCars:[], cvTrip: remember('eu.cvTrip') || '', cvTrips:{TO:null, FROM:null}, cvSaved:[], cvInfoLoaded:false, cvOnly:false, cvQuery:'', cvBusy:false };
+  cvStaff:[], cvLoaded:false, cvCards:{}, cv:{date:'', direction:''}, cvCars:[], cvTrip: remember('eu.cvTrip') || '', cvTrips:{TO:null, FROM:null}, cvSaved:[], cvInfoLoaded:false, cvSecs:null, cvSec:'', cvOnly:false, cvQuery:'', cvBusy:false };
 let cvCardsOn = false;
 
 if (!CFG.firebase || !CFG.firebase.apiKey) {
@@ -261,13 +266,14 @@ function listen(){
   }
   if (S.owner) listenTeamData();
   if (S.owner) {
-    unsubs.push(db.collection('convoyStaff').orderBy('no').onSnapshot(s => { S.cvStaff = s.docs.map(d => ({key:d.id, ...d.data()})); S.cvLoaded = true; cvMigrate(); render(); }, e => { console.warn(e); S.cvLoaded = true; S.cvDenied = e.code === 'permission-denied'; render(); }));
+    unsubs.push(db.collection('convoyStaff').orderBy('no').onSnapshot(s => { S.cvStaff = s.docs.map(d => ({key:d.id, ...d.data()})); S.cvLoaded = true; cvMigrate(); cvSecMigrate(); render(); }, e => { console.warn(e); S.cvLoaded = true; S.cvDenied = e.code === 'permission-denied'; render(); }));
     unsubs.push(db.collection('convoyInfo').onSnapshot(s => {
       S.cvCars = []; S.cvTrips = {TO: null, FROM: null}; S.cvSaved = [];
       s.forEach(d => { const x = d.data();
         if (d.id === 'vehicles') S.cvCars = x.list || [];
         else if (d.id === 'current') S.cv = {date: x.date || '', direction: x.direction || ''};
         else if (d.id === 'tripTO' || d.id === 'tripFROM') S.cvTrips[d.id.slice(4)] = {date: x.date || '', people: x.people || {}, drivers: x.drivers || {}};
+        else if (d.id === 'sections') S.cvSecs = x.list || null;
         else if (x.kind === 'saved') S.cvSaved.push({id: d.id, ...x}); });
       S.cvInfoLoaded = true; cvMigrate(); render(); }, e => console.warn(e)));
   }
@@ -636,7 +642,40 @@ function tripSet(T, patch){ // patch the trip being prepared; keeps the rest
 function cvTick(key, on){ const T = cvT(), people = {...tripOf(T).people}; if (on) people[key] = people[key] || ''; else delete people[key]; tripSet(T, {people}); }
 function cvPick(key, plate){ const T = cvT(); tripSet(T, {people: {...tripOf(T).people, [key]: plate}}); }
 
-function cvVisible(s){ if (S.cvOnly && !onTrip(cvT(), s.key)) return false; const q = S.cvQuery.trim().toLowerCase();
+/* --- Convoy sections: the list can grow; staff are grouped by it on the page and in the PDF --- */
+const SECTIONS = ['ELECT.UNIT','HVAC','GEN.UNIT','SUPPLY','TRANSPORT','PDU','HOSPITAL','PROCUREMENT','PERSONEL-HR'];
+const cvSecList = () => { const l = (S.cvSecs || SECTIONS).slice();
+  S.cvStaff.forEach(s => { const x = (s.section || '').trim(); if (x && !l.some(y => lc(y) === lc(x))) l.push(x); }); return l; };
+const secOf = s => (s.section || '').trim() || 'No section';
+const secRank = name => { const i = cvSecList().findIndex(y => lc(y) === lc(name)); return i < 0 ? 999 : i; };
+const bySection = (a, b) => secRank(secOf(a)) - secRank(secOf(b)) || a.no - b.no;
+// the old list called everyone "Electricians": that is ELECT.UNIT
+let cvSecDone = false;
+function cvSecMigrate(){ if (cvSecDone || !S.cvStaff.length) return; cvSecDone = true;
+  const old = S.cvStaff.filter(s => ['electricians','electrician',''].includes(lc(s.section)));
+  if (!old.length) return; const b = db.batch();
+  old.forEach(s => { s.section = 'ELECT.UNIT'; b.update(db.collection('convoyStaff').doc(s.key), {section: 'ELECT.UNIT'}); });
+  b.commit().catch(failed); }
+async function cvNewSection(){ const name = (prompt('Name of the new section (for example HOSPITAL):') || '').trim().toUpperCase().replace(/\s+/g, ' ');
+  if (!name) return '';
+  const l = cvSecList(); if (!l.some(y => lc(y) === lc(name))) { l.push(name); S.cvSecs = l;
+    try { await db.collection('convoyInfo').doc('sections').set({list: l}); toast('Section ' + name + ' added'); } catch (e) { failed(e); } }
+  return l.find(y => lc(y) === lc(name)); }
+function cvSecOptions(cur){ const l = cvSecList();
+  return l.map(x => `<option value="${esc(x)}" ${lc(x) === lc(cur) ? 'selected' : ''}>${esc(x)}</option>`).join('') + `<option value="__new">+ New section…</option>`; }
+function cvSecRow(){ const T = cvT(), used = cvSecList().filter(x => S.cvStaff.some(s => lc(secOf(s)) === lc(x)));
+  if (S.cvStaff.some(s => secOf(s) === 'No section')) used.push('No section');
+  return `<div class="secs"><button class="car" data-act="cvSec" data-v="" aria-pressed="${!S.cvSec}">All sections</button>${used.map(x => {
+    const n = S.cvStaff.filter(s => lc(secOf(s)) === lc(x) && onTrip(T, s.key)).length;
+    return `<button class="car" data-act="cvSec" data-v="${esc(x)}" aria-pressed="${lc(S.cvSec) === lc(x)}">${esc(x)} <b>${n}</b></button>`; }).join('')}</div>`; }
+function cvGroups(list){ const groups = [];
+  list.slice().sort(bySection).forEach(s => { const g = secOf(s), last = groups[groups.length - 1];
+    if (last && lc(last.name) === lc(g)) last.staff.push(s); else groups.push({name: g, staff: [s]}); });
+  const T = cvT();
+  return groups.map(g => `<div class="cvsec" data-sec="${esc(g.name)}" ${g.staff.some(cvVisible) ? "" : "hidden"}><h3 class="sechead">${esc(g.name)} <span>${g.staff.filter(s => onTrip(T, s.key)).length} of ${g.staff.length} on this trip</span></h3>
+    <div class="cvgrid" style="margin-top:10px">${g.staff.map(cvCard).join('')}</div></div>`).join(''); }
+
+function cvVisible(s){ if (S.cvOnly && !onTrip(cvT(), s.key)) return false; if (S.cvSec && lc(secOf(s)) !== lc(S.cvSec)) return false; const q = S.cvQuery.trim().toLowerCase();
   return !q || [s.no, s.name, s.idNo, s.phone, s.section].join(' ').toLowerCase().includes(q); }
 function cvCard(s){ const img = S.cvCards[s.key], T = cvT(), on = onTrip(T, s.key);
   return `<div class="card cvcard ${on?'on':''}" data-cv="${esc(s.key)}" ${cvVisible(s)?'':'hidden'}>
@@ -652,7 +691,7 @@ const savedId = (T, date) => 'saved_' + date + '_' + T;
 const savedOf = (T, date) => S.cvSaved.find(x => x.id === savedId(T, date));
 function tripSnapshot(T){ const t = tripOf(T);
   return {kind: 'saved', dir: T, date: t.date,
-    staff: tripStaff(T).map(s => ({key: s.key, no: s.no, name: s.name, idNo: s.idNo || '', section: s.section || '', phone: s.phone || '', plate: carOf(T, s.key)})),
+    staff: tripStaff(T).sort(bySection).map(s => ({key: s.key, no: s.no, name: s.name, idNo: s.idNo || '', section: s.section || '', phone: s.phone || '', plate: carOf(T, s.key)})),
     vehicles: cvVehicleSummary(T)}; }
 const sameTrip = (a, b) => JSON.stringify([a.staff, a.vehicles]) === JSON.stringify([b.staff, b.vehicles]);
 function tripStatus(T){ const t = tripOf(T); if (!t.date) return {cls: 'no', text: 'Choose a date'};
@@ -693,8 +732,9 @@ function convoyView(){
   </div>
   <div class="row"><input class="inp" id="cvQ" placeholder="Search name, ID or number" value="${esc(S.cvQuery)}" style="flex:1;min-width:180px">
     <div class="seg"><button data-act="cvShow" data-v="all" aria-pressed="${!S.cvOnly}">All</button><button data-act="cvShow" data-v="on" aria-pressed="${S.cvOnly}">On this trip</button></div></div>
-  <div class="row"><button class="btn sm" data-act="cvAll" data-v="1">Tick all</button><button class="btn sm" data-act="cvAll" data-v="0">Untick all</button><span class="spacer"></span><button class="btn sm primary" data-act="cvAdd">+ Add new staff</button></div>
-  <div class="cvgrid">${list.map(cvCard).join('')}</div>
+  ${cvSecRow()}
+  <div class="row"><button class="btn sm" data-act="cvAll" data-v="1">Tick all${S.cvSec ? ' ' + esc(S.cvSec) : ''}</button><button class="btn sm" data-act="cvAll" data-v="0">Untick all${S.cvSec ? ' ' + esc(S.cvSec) : ''}</button><span class="spacer"></span><button class="btn sm primary" data-act="cvAdd">+ Add new staff</button></div>
+  ${cvGroups(list)}
   ${histView()}
   </div>`;
 }
@@ -762,12 +802,12 @@ const cvVehicleSummary = T => cvPlates().map(c => ({plate: c.plate, driver: driv
 const cvNext = () => S.cvStaff.reduce((m, s) => Math.max(m, s.no || 0), 0) + 1;
 const cvKey = no => 'n' + String(no).padStart(3, '0');
 let cvEditing = null, cvPending = null;
-function cvForm(s){ cvEditing = s || null; cvPending = null; const sec = s ? s.section : (S.cvStaff[0] ? S.cvStaff[0].section : 'Electricians'); const img = s && S.cvCards[s.key];
+function cvForm(s){ cvEditing = s || null; cvPending = null; const sec = s ? secOf(s) : (S.cvSec || 'ELECT.UNIT'); const img = s && S.cvCards[s.key];
   return `<div class="row" style="margin-bottom:12px"><h2 style="margin:0">${s ? 'Edit staff ' + s.no : 'Add new staff'}</h2><span class="spacer"></span><button class="btn ghost" data-act="close">Close</button></div>
   <form id="fCv" class="stack"><p class="small muted" style="margin:0">${s ? `Number ${s.no} stays the same.` : `This person will be number ${cvNext()}.`}</p>
   <label class="f">Name<input id="cvName" required maxlength="80" value="${esc(s && s.name)}" placeholder="e.g. Elias FARAH"></label>
   <div class="grid2"><label class="f">ID card number<input id="cvIdNo" maxlength="40" value="${esc(s && s.idNo)}" placeholder="e.g. CIV 228370"></label>
-  <label class="f">Section<input id="cvSec" maxlength="60" value="${esc(sec)}"></label></div>
+  <label class="f">Section<select id="cvSec">${cvSecOptions(sec)}</select></label></div>
   <label class="f">Mobile<input id="cvPhone" maxlength="30" inputmode="tel" value="${esc(s && s.phone)}"></label>
   <label class="f">ID card picture<input type="file" id="cvFile" accept="image/*" class="inp"></label>
   <div class="row" style="align-items:flex-start"><div class="cvprev" id="cvPrev">${img ? `<img alt="" src="${img}">` : 'No picture yet'}</div>
@@ -798,8 +838,9 @@ async function cvSave(){ const name = val('cvName'); if (!name) { $('#cvFormMsg'
     else { const no = cvNext(); await db.collection('convoyStaff').doc(key).set({...body, no, plate: '', onDuty: false, hasImg: !!cvPending}); cvTick(key, true); toast('Added ' + no + '. ' + name + ', ticked for the ' + TRIP[cvT()].name + ' trip'); }
     closeSheet();
   } catch (e) { console.warn(e); $('#cvFormMsg').textContent = e.code === 'permission-denied' ? 'The database refused this. Check the Firestore rules for the Convoy list.' : 'Not saved. Check your connection and try again.'; btn.disabled = false; btn.textContent = 'Save'; } }
-function cvFilter(){ document.querySelectorAll('[data-cv]').forEach(el => { const s = S.cvStaff.find(x => x.key === el.dataset.cv); el.hidden = !s || !cvVisible(s); }); }
-async function cvImport(file){ cvMigrated = true; // a fresh list starts with empty trips
+function cvFilter(){ document.querySelectorAll('[data-cv]').forEach(el => { const s = S.cvStaff.find(x => x.key === el.dataset.cv); el.hidden = !s || !cvVisible(s); });
+  document.querySelectorAll('.cvsec').forEach(el => { el.hidden = !el.querySelector('[data-cv]:not([hidden])'); }); }
+async function cvImport(file){ cvMigrated = true; cvSecDone = true; // a fresh list starts with empty trips
   let data; try { data = JSON.parse(await file.text()); } catch (e) { toast('That file could not be read. Choose convoy-staff-import.json.'); return; }
   const list = (data && data.staff || []).filter(s => s && s.no && s.name);
   if (!list.length) { toast('No staff found in that file.'); return; }
@@ -809,7 +850,7 @@ async function cvImport(file){ cvMigrated = true; // a fresh list starts with em
   try {
     for (const s of todo) { const key = cvKey(s.no);
       if (s.img) await db.collection('convoyCards').doc(key).set({img: s.img});
-      await db.collection('convoyStaff').doc(key).set({no: s.no, name: s.name, idNo: s.idNo || '', section: s.section || '', phone: s.phone || '', plate: s.plate || '', onDuty: s.onDuty !== false, hasImg: !!s.img}); }
+      await db.collection('convoyStaff').doc(key).set({no: s.no, name: s.name, idNo: s.idNo || '', section: ['electricians','electrician',''].includes(lc(s.section)) ? 'ELECT.UNIT' : s.section, phone: s.phone || '', plate: s.plate || '', onDuty: s.onDuty !== false, hasImg: !!s.img}); }
     if (data.convoy && !S.cv.date && !S.cv.direction) await db.collection('convoyInfo').doc('current').set({date: data.convoy.date || '', direction: data.convoy.direction || ''});
     toast(todo.length + ' staff loaded');
   } catch (e) { failed(e); } }
@@ -903,7 +944,9 @@ document.addEventListener('click', e => {
   if (a === 'restore') db.collection('team').doc(t.dataset.e).update({active: true}).catch(failed);
   if (a === 'cvTrip') { S.cvTrip = t.dataset.v; remember('eu.cvTrip', S.cvTrip); render(); }
   if (a === 'cvShow') { S.cvOnly = t.dataset.v === 'on'; render(); }
-  if (a === 'cvAll') { const T = cvT(), people = {}; if (t.dataset.v === '1') S.cvStaff.forEach(s => people[s.key] = carOf(T, s.key)); tripSet(T, {people}); }
+  if (a === 'cvSec') { S.cvSec = t.dataset.v; render(); }
+  if (a === 'cvAll') { const T = cvT(), people = {...tripOf(T).people}, on = t.dataset.v === '1';
+    S.cvStaff.filter(s => !S.cvSec || lc(secOf(s)) === lc(S.cvSec)).forEach(s => { if (on) people[s.key] = carOf(T, s.key); else delete people[s.key]; }); tripSet(T, {people}); }
   if (a === 'cvAdd') openSheet(cvForm(null), null, 'convoy');
   if (a === 'cvEdit') openSheet(cvForm(S.cvStaff.find(s => s.key === t.dataset.id)), null, 'convoy');
   if (a === 'cvRotate') cvRotate().catch(() => toast('Could not turn this picture.'));
@@ -932,6 +975,7 @@ document.addEventListener('change', e => {
   const t = e.target;
   if (t.dataset.cvtick) { cvTick(t.dataset.cvtick, t.checked); return; }
   if (t.id === 'cvDate') { tripSet(cvT(), {date: t.value}); return; }
+  if (t.id === 'cvSec' && t.value === '__new') { const sel = t; cvNewSection().then(n => { sel.innerHTML = cvSecOptions(n || (cvEditing ? secOf(cvEditing) : 'ELECT.UNIT')); }); return; }
   if (t.dataset.cvcar) { cvPick(t.dataset.cvcar, t.value); return; }
   if (t.id === 'cvImport') { const f = t.files && t.files[0]; t.value = ''; if (f) cvImport(f); return; }
   if (t.id === 'cvFile') { const f = t.files && t.files[0]; t.value = ''; if (f) cvNormalise(f).then(d => { cvPending = d; $('#cvPrev').innerHTML = `<img alt="" src="${d}">`; $('#cvFormMsg').textContent = ''; })
