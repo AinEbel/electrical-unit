@@ -204,7 +204,7 @@ label.f select{width:100%;padding:10px 12px;border:1px solid var(--line);border-
   <div class="wrap">
     <div class="brand">
       <div class="bolt" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg></div>
-      <div><h1>Critical Staff</h1><div class="sub">Naqoura - Sector West · v25</div></div>
+      <div><h1>Critical Staff</h1><div class="sub">Naqoura - Sector West · v26</div></div>
       <div class="me" id="me"></div>
     </div>
     <nav class="tabs" id="tabs" aria-label="Sections"></nav>
@@ -239,7 +239,7 @@ const MARKS = [['P','Present'],['A','Absent'],['L','Leave'],['S','Sick'],['O','O
 
 const S = { user:null, email:'', owner:false, me:null, team:{}, attendance:{}, notes:[], loaded:false,
   tab: remember('eu.tab') || 'convoy', orders:[], support:[], orderFilter:'open', supportFilter:'pending', openSupportId:null, openOrder:null, month: ym(new Date()), noteFilter:'pending', sites:[], readings:{}, kMonth: ym(new Date()), kFind:'', authMode:'signin', authMsg:'',
-  cvStaff:[], cvLoaded:false, cvCards:{}, cv:{date:'', direction:''}, cvCars:[], cvTrip: remember('eu.cvTrip') || '', cvDays:{}, cvDate: isoDay(new Date()), cvMonth: isoDay(new Date()).slice(0, 7), cvInfoLoaded:false, cvSecs:null, cvSec:'', cvOnly:false, cvQuery:'', cvBusy:false };
+  cvStaff:[], cvLoaded:false, cvCards:{}, cv:{date:'', direction:''}, cvCars:[], cvTrip: remember('eu.cvTrip') || '', cvDays:{}, cvCal:false, cvDate: isoDay(new Date()), cvMonth: isoDay(new Date()).slice(0, 7), cvInfoLoaded:false, cvSecs:null, cvSec:'', cvOnly:false, cvQuery:'', cvBusy:false };
 let cvCardsOn = false;
 
 if (!CFG.firebase || !CFG.firebase.apiKey) {
@@ -729,8 +729,8 @@ function convoyView(){
     <div class="row" style="justify-content:center"><label class="btn primary">Load staff list file<input type="file" id="cvImport" accept=".json,application/json" hidden></label><button class="btn" data-act="cvAdd">+ Add new staff</button></div></div>`;
   const ed = cvEditable(), dt = new Date(S.cvDate + 'T12:00');
   return `<div class="stack">
-  <h2 style="margin:0">Convoy calendar</h2>
-  ${calView()}
+  <div class="row"><h2 style="margin:0">Convoy</h2><span class="spacer"></span><button class="btn ${S.cvCal ? '' : 'primary'}" data-act="cvCal" aria-expanded="${S.cvCal}">${S.cvCal ? 'Close calendar' : 'Open calendar'}</button></div>
+  ${S.cvCal ? calView() : ''}
   <div class="card stack" style="gap:10px;border-color:var(--accent)">
     <div class="row"><h2 style="margin:0">${DAYS[dt.getDay()]} ${fmtD(S.cvDate)}</h2><span class="spacer"></span><span class="st ${ed ? 'ok' : 'no'}">${ed ? '✓ Changes save automatically' : 'Past date: view only'}</span></div>
     <div class="seg">${['TO','FROM'].map(X => `<button data-act="cvTrip" data-v="${X}" aria-pressed="${T === X}">${TRIP[X].name} · ${dayCount(S.cvDate, X)}</button>`).join('')}</div>
@@ -956,6 +956,7 @@ document.addEventListener('click', e => {
       db.collection('convoyStaff').doc(t.dataset.id).delete().then(() => { db.collection('convoyCards').doc(t.dataset.id).delete().catch(() => {}); if (s) toast('Deleted ' + s.no + '. ' + s.name + ' from the list'); }).catch(failed); closeSheet(); }
     else { t.dataset.confirm = 1; t.textContent = 'Tap again to delete for good'; t.classList.add('danger'); $('#cvFormMsg').textContent = 'To leave someone out for one week only, untick them instead.'; } }
   if (a === 'cvPdf') cvOut(t.dataset.v === 'view' ? 'pdf' : t.dataset.v, t.dataset.v === 'view');
+  if (a === 'cvCal') { S.cvCal = !S.cvCal; render(); }
   if (a === 'cvDay') { S.cvDate = t.dataset.v; render(); }
   if (a === 'cvMonth') { const [y, m] = S.cvMonth.split('-').map(Number); S.cvMonth = isoDay(new Date(y, m - 1 + Number(t.dataset.v), 1)).slice(0, 7); render(); }
   if (a === 'cvCar') openSheet(cvCarSheet(t.dataset.plate), null, 'convoy');
