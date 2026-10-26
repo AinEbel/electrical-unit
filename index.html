@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#0F1A17">
-<title>Electrical Unit</title>
+<meta name="theme-color" content="#0B1F3F">
+<title>Critical Staff</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800&family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
@@ -28,8 +28,8 @@ window.EU_CONFIG = {
 </script>
 <style>
 :root{
-  --bg:#0F1A17; --surface:#16241F; --sunk:#1D2E28; --ink:#F4F2EC; --muted:#A9B6B0; --line:#26352F;
-  --accent:#E8A33D; --accent-ink:#0F1A17; --accent-soft:#3A2E14;
+  --bg:#0B1F3F; --surface:#12294F; --sunk:#183260; --ink:#F5F7FC; --muted:#AEBBD6; --line:#24406F;
+  --accent:#FFD21F; --accent-ink:#0B1F3F; --accent-soft:#3D3A1A;
   --urgent:#EF6B5A; --urgent-soft:#3A1B17; --ok:#7FD1B9; --ok-soft:#163029; --info:#8CC3EE; --info-soft:#15283A;
   --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
   --f-label:"Archivo",system-ui,sans-serif;
@@ -191,7 +191,7 @@ label.f select{width:100%;padding:10px 12px;border:1px solid var(--line);border-
   <div class="wrap">
     <div class="brand">
       <div class="bolt" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg></div>
-      <div><h1>Electrical Unit</h1><div class="sub">UNIFIL · Maintenance · v19</div></div>
+      <div><h1>Critical Staff</h1><div class="sub">Naqoura - Sector West · v20</div></div>
       <div class="me" id="me"></div>
     </div>
     <nav class="tabs" id="tabs" aria-label="Sections"></nav>
@@ -217,13 +217,14 @@ function ago(ms){ if(!ms) return ''; const s=(Date.now()-ms)/1000;
 function toast(msg, urgent){ const t=document.createElement('div'); t.className='toast'+(urgent?' u':''); t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),urgent?10000:4000); }
 function remember(k,v){ try{ if(v===undefined) return localStorage.getItem(k); localStorage.setItem(k,v); }catch(e){ return null; } }
 
-const TABS = [['orders','Daily jobs'],['support','Urgent support'],['attendance','Attendance'],['notes','Notes'],['kwh','kWh'],['convoy','Convoy'],['team','Team']];
-const OWNER_TABS = ['convoy','team'];
+// only Convoy and Notes are shown on this page; the other tabs stay on the original Electrical Unit page
+const TABS = [['convoy','Convoy'],['notes','Notes']];
+const OWNER_TABS = ['convoy'];
 const STATUS = {new:'New', progress:'In progress', waiting:'Waiting parts', done:'Done'};
 const MARKS = [['P','Present'],['A','Absent'],['L','Leave'],['S','Sick'],['O','Off']];
 
 const S = { user:null, email:'', owner:false, me:null, team:{}, attendance:{}, notes:[], loaded:false,
-  tab: remember('eu.tab') || 'orders', orders:[], support:[], orderFilter:'open', supportFilter:'pending', openSupportId:null, openOrder:null, month: ym(new Date()), noteFilter:'pending', sites:[], readings:{}, kMonth: ym(new Date()), kFind:'', authMode:'signin', authMsg:'',
+  tab: remember('eu.tab') || 'convoy', orders:[], support:[], orderFilter:'open', supportFilter:'pending', openSupportId:null, openOrder:null, month: ym(new Date()), noteFilter:'pending', sites:[], readings:{}, kMonth: ym(new Date()), kFind:'', authMode:'signin', authMsg:'',
   cvStaff:[], cvLoaded:false, cvCards:{}, cv:{date:'', direction:''}, cvCars:[], cvTrip: remember('eu.cvTrip') || '', cvTrips:{TO:null, FROM:null}, cvSaved:[], cvInfoLoaded:false, cvOnly:false, cvQuery:'', cvBusy:false };
 let cvCardsOn = false;
 
@@ -310,19 +311,19 @@ function fitAtt(){ const el = document.querySelector('.attwrap'); if (!el) retur
   const top = el.getBoundingClientRect().top + window.scrollY; el.style.maxHeight = Math.max(280, window.innerHeight - top - 16) + 'px'; }
 window.addEventListener('resize', fitAtt);
 function render(){
-  document.title = (openSupport().length ? '🔴 ' : '') + (newCount() ? '(' + newCount() + ') ' : '') + 'Electrical Unit';
+  document.title = 'Critical Staff';
   if (typing()) { pending = true; return; }
   const ok = S.user && S.user.emailVerified && S.loaded && allowed();
   $('#me').innerHTML = S.user ? `<div>${esc(S.owner ? 'Supervisor' : (S.me && S.me.name) || S.email)}</div><button data-act="signout">Sign out</button>` : '';
   const tabs = TABS.filter(([k]) => !OWNER_TABS.includes(k) || S.owner);
-  if (!tabs.some(([k]) => k === S.tab)) S.tab = 'orders';
+  if (!tabs.some(([k]) => k === S.tab)) S.tab = tabs[0][0];
   $('#tabs').innerHTML = ok ? tabs.map(([k,l]) => `<button class="tab" data-tab="${k}" aria-selected="${S.tab===k}">${l}${k==='orders'&&newCount()?`<span class="dot">${newCount()}</span>`:''}${k==='support'&&openSupport().length?`<span class="dot red">${openSupport().length}</span>`:''}</button>`).join('') : '';
   const v = $('#view'); v.classList.toggle('wide', S.tab === 'attendance'); const sx = v.querySelector('.scrollx')?.scrollLeft;
   if (!S.user) v.innerHTML = authView();
   else if (!S.user.emailVerified) v.innerHTML = verifyView();
   else if (!S.loaded) v.innerHTML = `<div class="empty"><b>Loading</b>Checking your access.</div>`;
   else if (!allowed()) v.innerHTML = `<div class="gate stack"><h2>${S.me ? 'Access removed' : 'Not approved yet'}</h2><p class="muted">${S.me ? 'The supervisor has removed your access.' : 'Ask the supervisor to add <b>'+esc(S.email)+'</b> to the team. This page opens as soon as they do.'}</p></div>`;
-  else v.innerHTML = (S.tab!=='support'&&openSupport().length?supportBar():'')+({orders:ordersView, support:supportView, kwh:kwhView, attendance:attView, notes:notesView, convoy:convoyView, team:teamView})[S.tab]();
+  else v.innerHTML = ({orders:ordersView, support:supportView, kwh:kwhView, attendance:attView, notes:notesView, convoy:convoyView, team:teamView})[S.tab]();
   if (S.tab === 'convoy') cvListenCards();
   fitAtt();
   if (sx) { const el = v.querySelector('.scrollx'); if (el) el.scrollLeft = sx; }
