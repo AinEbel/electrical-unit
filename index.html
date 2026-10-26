@@ -205,7 +205,7 @@ label.f select{width:100%;padding:10px 12px;border:1px solid var(--line);border-
   <div class="wrap">
     <div class="brand">
       <div class="bolt" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg></div>
-      <div><h1>Critical Staff</h1><div class="sub">Naqoura - Sector West · v28</div></div>
+      <div><h1>Critical Staff</h1><div class="sub">Naqoura - Sector West · v29</div></div>
       <div class="me" id="me"></div>
     </div>
     <nav class="tabs" id="tabs" aria-label="Sections"></nav>
@@ -235,6 +235,8 @@ function remember(k,v){ try{ if(v===undefined) return localStorage.getItem(k); l
 // only Convoy and Notes are shown on this page; the other tabs stay on the original Electrical Unit page
 const TABS = [['convoy','Convoy'],['notes','Notes']];
 const OWNER_TABS = ['convoy'];
+const VIEWER = 'farah12+convoystaff@un.org', VIEWER_USER = 'staff';
+const loginEmail = v => v.trim().toLowerCase() === VIEWER_USER ? VIEWER : v.trim();
 const STATUS = {new:'New', progress:'In progress', waiting:'Waiting parts', done:'Done'};
 const MARKS = [['P','Present'],['A','Absent'],['L','Leave'],['S','Sick'],['O','Off']];
 
@@ -256,15 +258,16 @@ let dataOn = false;
 /* ---------- sign in ---------- */
 auth.onAuthStateChanged(u => {
   unsubs.forEach(f => f()); unsubs = []; dataOn = false; cvCardsOn = false; S.cvStaff = []; S.cvCards = {}; S.cvLoaded = false;
-  S.user = u; S.email = u && u.email ? u.email.toLowerCase() : ''; S.owner = !!u && u.emailVerified && S.email === OWNER;
+  S.user = u; S.email = u && u.email ? u.email.toLowerCase() : ''; S.owner = !!u && u.emailVerified && S.email === OWNER; S.viewer = !!u && S.email === VIEWER;
   S.team = {}; S.attendance = {}; S.notes = []; S.loaded = false; S.me = null;
-  if (u && u.emailVerified) listen();
+  if (u && (u.emailVerified || S.viewer)) listen();
   render();
 });
 
 function listen(){
   const fail = e => { console.warn(e); if (e.code === 'permission-denied') { S.loaded = true; render(); } };
-  if (S.owner) {
+  if (S.viewer) S.loaded = true;
+  else if (S.owner) {
     unsubs.push(db.collection('team').onSnapshot(s => { S.team = {}; s.forEach(d => S.team[d.id] = d.data()); S.loaded = true; render(); }, fail));
   } else {
     unsubs.push(db.collection('team').doc(S.email).onSnapshot(d => {
@@ -275,8 +278,15 @@ function listen(){
     }, fail));
   }
   if (S.owner) listenTeamData();
+  // the shared login reads only the convoy days (who was selected), never the full staff list
+  if (S.viewer) { S.cvLoaded = true; cvListenInfo(); }
   if (S.owner) {
     unsubs.push(db.collection('convoyStaff').orderBy('no').onSnapshot(s => { S.cvStaff = s.docs.map(d => ({key:d.id, ...d.data()})); S.cvLoaded = true; cvSecMigrate(); render(); }, e => { console.warn(e); S.cvLoaded = true; S.cvDenied = e.code === 'permission-denied'; render(); }));
+    cvListenInfo();
+  }
+}
+function cvListenInfo(){
+  {
     unsubs.push(db.collection('convoyInfo').onSnapshot(s => {
       S.cvCars = []; const days = {}, rank = {day: 3, saved: 2, trip: 1};
       // older records ("saved" trips and the two working trips) still show, a "day" record wins
@@ -320,7 +330,7 @@ function listenTeamData(){
   unsubs.push(db.collection('readings').onSnapshot(s => { S.readings = {}; s.forEach(d => S.readings[d.id] = d.data().values || {}); render(); }, fail));
   unsubs.push(db.collection('notes').orderBy('at','desc').limit(300).onSnapshot(s => { S.notes = s.docs.map(d => ({id:d.id, ...d.data()})); render(); }, fail));
 }
-const allowed = () => S.owner || !!(S.me && S.me.active);
+const allowed = () => S.owner || S.viewer || !!(S.me && S.me.active);
 const nameOf = e => (S.team[e] && S.team[e].name) || (e === OWNER ? 'Supervisor' : e);
 const members = () => Object.entries(S.team).filter(([,t]) => t.active).map(([e,t]) => ({email:e, ...t})).sort((a,b) => (a.name||a.email).localeCompare(b.name||b.email));
 
@@ -334,14 +344,14 @@ window.addEventListener('resize', fitAtt);
 function render(){
   document.title = 'Critical Staff';
   if (typing()) { pending = true; return; }
-  const ok = S.user && S.user.emailVerified && S.loaded && allowed();
-  $('#me').innerHTML = S.user ? `<div>${esc(S.owner ? 'Supervisor' : (S.me && S.me.name) || S.email)}</div><button data-act="signout">Sign out</button>` : '';
-  const tabs = TABS.filter(([k]) => !OWNER_TABS.includes(k) || S.owner);
+  const ok = S.user && (S.user.emailVerified || S.viewer) && S.loaded && allowed();
+  $('#me').innerHTML = S.user ? `<div>${esc(S.owner ? 'Supervisor' : S.viewer ? 'Staff · view only' : (S.me && S.me.name) || S.email)}</div><button data-act="signout">Sign out</button>` : '';
+  const tabs = S.viewer ? TABS.filter(([k]) => k === 'convoy') : TABS.filter(([k]) => !OWNER_TABS.includes(k) || S.owner);
   if (!tabs.some(([k]) => k === S.tab)) S.tab = tabs[0][0];
   $('#tabs').innerHTML = ok ? tabs.map(([k,l]) => `<button class="tab" data-tab="${k}" aria-selected="${S.tab===k}">${l}${k==='orders'&&newCount()?`<span class="dot">${newCount()}</span>`:''}${k==='support'&&openSupport().length?`<span class="dot red">${openSupport().length}</span>`:''}</button>`).join('') : '';
   const v = $('#view'); v.classList.toggle('wide', S.tab === 'attendance'); const sx = v.querySelector('.scrollx')?.scrollLeft;
   if (!S.user) v.innerHTML = authView();
-  else if (!S.user.emailVerified) v.innerHTML = verifyView();
+  else if (!S.user.emailVerified && !S.viewer) v.innerHTML = verifyView();
   else if (!S.loaded) v.innerHTML = `<div class="empty"><b>Loading</b>Checking your access.</div>`;
   else if (!allowed()) v.innerHTML = `<div class="gate stack"><h2>${S.me ? 'Access removed' : 'Not approved yet'}</h2><p class="muted">${S.me ? 'The supervisor has removed your access.' : 'Ask the supervisor to add <b>'+esc(S.email)+'</b> to the team. This page opens as soon as they do.'}</p></div>`;
   else v.innerHTML = ({orders:ordersView, support:supportView, kwh:kwhView, attendance:attView, notes:notesView, convoy:convoyView, team:teamView})[S.tab]();
@@ -354,7 +364,7 @@ function authView(){
   const up = S.authMode === 'signup';
   return `<form class="gate card stack" id="fAuth"><h2>${up ? 'Create your account' : 'Sign in'}</h2>
   <p class="muted small" style="margin:0">${up ? 'Use the work email your supervisor added to the team.' : 'Use your work email and password.'}</p>
-  <label class="f">Email<input id="aEmail" type="email" autocomplete="email" required></label>
+  <label class="f">Email${up ? '' : ' or user name'}<input id="aEmail" type="${up ? 'email' : 'text'}" autocomplete="username" autocapitalize="none" required></label>
   <label class="f">Password<input id="aPass" type="password" autocomplete="${up?'new-password':'current-password'}" minlength="6" required></label>
   ${S.authMsg ? `<div class="${S.authMsg.startsWith('✓')?'ok':'err'}">${esc(S.authMsg)}</div>` : ''}
   <button class="btn primary" type="submit">${up ? 'Create account' : 'Sign in'}</button>
@@ -638,7 +648,7 @@ const TRIP = {TO: {name: 'To Naqoura', route: 'Sector West → UNIFIL HQ Naqoura
 const lc = s => String(s || '').trim().toLowerCase();
 const fmtD = iso => iso ? iso.split('-').reverse().join('/') : '';
 const cvT = () => S.cvTrip === 'TO' || S.cvTrip === 'FROM' ? S.cvTrip : 'TO';
-const cvEditable = () => S.cvDate >= isoDay(new Date()); // today and later can change; past dates are a record
+const cvEditable = () => !S.viewer && S.cvDate >= isoDay(new Date()); // today and later can change; past dates are a record
 const recOf = (date, T) => (S.cvDays[date] || {})[T];
 const hasTrip = T => !!recOf(S.cvDate, T);
 const tripOf = T => recOf(S.cvDate, T) || {people: {}, drivers: {}};
@@ -696,7 +706,7 @@ const secRank = name => { const i = cvSecList().findIndex(y => lc(y) === lc(name
 const bySection = (a, b) => secRank(secOf(a)) - secRank(secOf(b)) || a.no - b.no;
 // the old list called everyone "Electricians": that is ELECT.UNIT
 let cvSecDone = false;
-function cvSecMigrate(){ if (cvSecDone || !S.cvStaff.length) return; cvSecDone = true;
+function cvSecMigrate(){ if (cvSecDone || !S.cvStaff.length || S.viewer) return; cvSecDone = true;
   const old = S.cvStaff.filter(s => ['electricians','electrician',''].includes(lc(s.section)));
   if (!old.length) return; const b = db.batch();
   old.forEach(s => { s.section = 'ELECT.UNIT'; b.update(db.collection('convoyStaff').doc(s.key), {section: 'ELECT.UNIT'}); });
@@ -728,18 +738,18 @@ function convoyView(){
   const list = S.cvStaff, T = cvT(), on = daySnapshot(T).staff.length;
   if (!S.cvLoaded) return `<div class="empty"><b>Loading the staff list</b>Connecting to the team database.</div>`;
   if (S.cvDenied) return `<div class="empty"><b>The database blocked the Convoy list</b>Add the Convoy lines to the Firestore rules in the Firebase console, then reload this page.</div>`;
-  if (!list.length) return `<div class="empty stack" style="gap:10px"><b>No staff yet</b><span>Load your saved list of critical staff (the file <b>convoy-staff-import.json</b>), or add people one by one. Numbers start at 1 and never change.</span>
+  if (!list.length && !S.viewer) return `<div class="empty stack" style="gap:10px"><b>No staff yet</b><span>Load your saved list of critical staff (the file <b>convoy-staff-import.json</b>), or add people one by one. Numbers start at 1 and never change.</span>
     <div class="row" style="justify-content:center"><label class="btn primary">Load staff list file<input type="file" id="cvImport" accept=".json,application/json" hidden></label><button class="btn" data-act="cvAdd">+ Add new staff</button></div></div>`;
   const ed = cvEditable(), dt = new Date(S.cvDate + 'T12:00');
   return `<div class="stack">
   <div class="row"><h2 style="margin:0">Convoy</h2><span class="spacer"></span><button class="btn ${S.cvCal ? '' : 'primary'}" data-act="cvCal" aria-expanded="${S.cvCal}">${S.cvCal ? 'Close calendar' : 'Open calendar'}</button></div>
   ${S.cvCal ? calView() : ''}
   <div class="card stack" style="gap:10px;border-color:var(--accent)">
-    <div class="row"><h2 style="margin:0">${DAYS[dt.getDay()]} ${fmtD(S.cvDate)}</h2><span class="spacer"></span><span class="st ${ed ? 'ok' : 'no'}">${ed ? '✓ Changes save automatically' : 'Past date: view only'}</span></div>
+    <div class="row"><h2 style="margin:0">${DAYS[dt.getDay()]} ${fmtD(S.cvDate)}</h2><span class="spacer"></span><span class="st ${ed ? 'ok' : 'no'}">${ed ? '✓ Changes save automatically' : S.viewer ? 'View only' : 'Past date: view only'}</span></div>
     <div class="seg">${['TO','FROM'].map(X => `<button data-act="cvTrip" data-v="${X}" aria-pressed="${T === X}">${TRIP[X].name} · ${dayCount(S.cvDate, X)}</button>`).join('')}</div>
     <div class="small muted">${TRIP[T].route} · escorted by the Irish contingent.${ed ? ' Tick who travels and put them in a car.' : ''}</div>
     ${ed ? `<div class="stack" style="gap:6px"><h3 style="margin:0">Vehicles on this trip</h3>${cvCarsRow()}</div>` : pastView(T)}
-    <div class="row">${convoyNo(S.cvDate) ? `<b class="cvconv">Convoy No. ${convoyNo(S.cvDate)}</b>` : ''}<span style="font-family:var(--f-mono)"><b>${on}</b> of ${list.length} staff</span><span class="spacer"></span>${on ? `<button class="btn sm" data-act="cvPdf" data-v="view">View PDF</button><button class="btn sm" data-act="cvPdf" data-v="pdf">Download PDF</button><button class="btn sm" data-act="cvPdf" data-v="docx">Word</button>` : ''}</div>
+    <div class="row">${convoyNo(S.cvDate) ? `<b class="cvconv">Convoy No. ${convoyNo(S.cvDate)}</b>` : ''}<span style="font-family:var(--f-mono)"><b>${on}</b>${S.viewer ? '' : ' of ' + list.length} staff</span><span class="spacer"></span>${on ? `<button class="btn sm" data-act="cvPdf" data-v="view">View PDF</button><button class="btn sm" data-act="cvPdf" data-v="pdf">Download PDF</button><button class="btn sm" data-act="cvPdf" data-v="docx">Word</button>` : ''}</div>
   </div>
   ${ed ? `<div class="row"><input class="inp" id="cvQ" placeholder="Search name, ID or number" value="${esc(S.cvQuery)}" style="flex:1;min-width:180px">
     <div class="seg"><button data-act="cvShow" data-v="all" aria-pressed="${!S.cvOnly}">All</button><button data-act="cvShow" data-v="on" aria-pressed="${S.cvOnly}">On this trip</button></div></div>
@@ -910,7 +920,7 @@ document.addEventListener('click', e => {
   const a = t.dataset.act;
   if (a === 'signout') auth.signOut();
   if (a === 'authMode') { S.authMode = S.authMode === 'signup' ? 'signin' : 'signup'; S.authMsg = ''; render(); }
-  if (a === 'forgot') { const em = val('aEmail'); if (!em) { S.authMsg = 'Type your email first, then tap Forgot password.'; render(); return; }
+  if (a === 'forgot') { const em = loginEmail(val('aEmail')); if (!em) { S.authMsg = 'Type your email first, then tap Forgot password.'; render(); return; }
     auth.sendPasswordResetEmail(em).then(() => { S.authMsg = '✓ Password reset link sent to ' + em; render(); }).catch(err => { S.authMsg = authError(err); render(); }); }
   if (a === 'resend') S.user.sendEmailVerification().then(() => toast('Link sent again')).catch(() => toast('Wait a minute, then try again'));
   if (a === 'verified') S.user.reload().then(() => { if (auth.currentUser.emailVerified) { S.user = auth.currentUser; auth.currentUser.getIdToken(true).then(() => { S.email = S.user.email.toLowerCase(); S.owner = S.email === OWNER; listen(); render(); }); } else toast('Not confirmed yet. Open the link in your email first.'); });
@@ -999,7 +1009,7 @@ document.addEventListener('submit', e => {
   e.preventDefault(); const f = e.target;
   if (f.id === 'fCv') cvSave();
   if (f.id === 'fCar') cvCarSave();
-  if (f.id === 'fAuth') { const em = val('aEmail'), pw = $('#aPass').value;
+  if (f.id === 'fAuth') { const em = loginEmail(val('aEmail')), pw = $('#aPass').value;
     const p = S.authMode === 'signup'
       ? auth.createUserWithEmailAndPassword(em, pw).then(c => c.user.sendEmailVerification())
       : auth.signInWithEmailAndPassword(em, pw);
