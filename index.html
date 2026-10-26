@@ -151,7 +151,8 @@ label.f select{width:100%;padding:10px 12px;border:1px solid var(--line);border-
 /* Convoy: weekly critical staff list (supervisor only) */
 .cvgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
 .secs{display:flex;gap:6px;flex-wrap:wrap}
-.cvsecname{font:800 14px/1.2 var(--f-label);letter-spacing:.06em;color:var(--accent);text-transform:uppercase;margin-top:-4px;padding-left:2px}
+.cvsecname{font:800 14px/1.2 var(--f-label);letter-spacing:.06em;color:var(--accent);text-transform:uppercase}
+.cvlbl{display:inline-flex;flex-direction:column;align-items:center;gap:5px}
 .secs .car[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .secs .car[aria-pressed="true"] b{color:var(--accent-ink)}
 .sechead{display:flex;align-items:baseline;gap:8px;margin:6px 0 0;padding-bottom:6px;border-bottom:1px solid var(--line);font:800 15px/1.2 var(--f-label);letter-spacing:.04em;color:var(--accent)}
@@ -197,7 +198,7 @@ label.f select{width:100%;padding:10px 12px;border:1px solid var(--line);border-
   <div class="wrap">
     <div class="brand">
       <div class="bolt" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg></div>
-      <div><h1>Critical Staff</h1><div class="sub">Naqoura - Sector West · v23</div></div>
+      <div><h1>Critical Staff</h1><div class="sub">Naqoura - Sector West · v24</div></div>
       <div class="me" id="me"></div>
     </div>
     <nav class="tabs" id="tabs" aria-label="Sections"></nav>
@@ -678,8 +679,7 @@ function cvCard(s){ const img = S.cvCards[s.key], T = cvT(), on = onTrip(T, s.ke
   <div class="cvthumb">${img ? `<img alt="ID card of ${esc(s.name)}" src="${img}">` : (s.hasImg ? 'Loading picture…' : 'No ID card')}</div>
   <div class="meta"><span style="font-family:var(--f-mono)">${esc(s.phone||'No phone')}</span></div>
   <select class="cvcar" data-cvcar="${esc(s.key)}" aria-label="Vehicle for ${esc(s.name)}">${cvCarOptions(carOf(T, s.key))}</select>
-  <div class="row"><span class="pill ${on?'p-done':'p-off'}">${on ? esc(TRIP[T].name) : 'Not on this trip'}</span><span class="spacer"></span><button class="btn sm ghost" data-act="cvEdit" data-id="${esc(s.key)}">Edit</button></div>
-  <div class="cvsecname">${esc(secOf(s))}</div></div>`; }
+  <div class="row"><span class="cvlbl"><span class="pill ${on?'p-done':'p-off'}">${on ? esc(TRIP[T].name) : 'Not on this trip'}</span><span class="cvsecname">${esc(secOf(s))}</span></span><span class="spacer"></span><button class="btn sm ghost" data-act="cvEdit" data-id="${esc(s.key)}">Edit</button></div></div>`; }
 
 /* saved trips: one per direction and date; saving again replaces it */
 const savedId = (T, date) => 'saved_' + date + '_' + T;
