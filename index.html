@@ -194,13 +194,13 @@ label.f select{width:100%;padding:10px 12px;border:1px solid var(--line);border-
 .cvconv{font:800 16px/1.2 var(--f-label);letter-spacing:.04em;color:var(--accent);text-transform:uppercase;margin-right:6px}
 .st{font-size:13px} .st.ok{color:var(--ok)} .st.no{color:var(--muted)}
 .rowrap{border:1px solid var(--line);border-radius:10px;overflow:auto}
-.ro{width:100%;border-collapse:collapse;font-size:14px}
-.ro th,.ro td{padding:9px 12px;text-align:left;border-right:1px solid var(--line);border-bottom:1px solid var(--line);white-space:nowrap}
+.ro{width:100%;min-width:520px;border-collapse:collapse;font-size:14px;table-layout:fixed}
+.ro th,.ro td{padding:9px 12px;text-align:left;border-right:1px solid var(--muted);border-bottom:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ro th:last-child,.ro td:last-child{border-right:0}
 .ro tr:last-child td{border-bottom:0}
 .ro th{background:var(--accent);color:var(--accent-ink);font:800 12px/1.2 var(--f-label);letter-spacing:.08em;text-transform:uppercase}
 .ro tr:nth-child(even) td{background:var(--sunk)}
-.ro td.no{width:1%;text-align:center;font-family:var(--f-mono);color:var(--accent);font-weight:600}
+.ro td.no{text-align:center;font-family:var(--f-mono);color:var(--accent);font-weight:600}
 .ro td.nm{font-weight:700}
 .ro td.pl{font-family:var(--f-mono)}
 .hist .card{display:flex;gap:8px;align-items:center;flex-wrap:wrap;padding:10px 12px}
@@ -212,7 +212,7 @@ label.f select{width:100%;padding:10px 12px;border:1px solid var(--line);border-
   <div class="wrap">
     <div class="brand">
       <div class="bolt" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg></div>
-      <div><h1>Critical Staff</h1><div class="sub">Naqoura - Sector West · v30</div></div>
+      <div><h1>Critical Staff</h1><div class="sub">Naqoura - Sector West · v31</div></div>
       <div class="me" id="me"></div>
     </div>
     <nav class="tabs" id="tabs" aria-label="Sections"></nav>
@@ -702,7 +702,7 @@ function calView(){ const [y, m] = S.cvMonth.split('-').map(Number), first = new
 function pastView(T){ const sv = daySnapshot(T);
   if (!sv.staff.length) return `<div class="empty small">No ${TRIP[T].name} convoy on this date.</div>`;
   return `<div class="stack" style="gap:10px">${sv.vehicles.length ? `<div class="cars">${sv.vehicles.map(v => `<span class="car">${esc(v.plate)} <b>${v.count}</b>${v.driver ? ` <span class="small muted">Driver: ${esc(v.driver)}</span>` : ''}</span>`).join('')}</div>` : ''}
-  <div class="rowrap"><table class="ro"><tr><th style="text-align:center">No</th><th>Name</th><th>Section</th><th>Vehicle</th></tr>${sv.staff.map(s => `<tr><td class="no">${s.no}</td><td class="nm">${esc(s.name)}</td><td>${esc(s.section || '')}</td><td class="pl">${esc(s.plate || '-')}</td></tr>`).join('')}</table></div></div>`; }
+  <div class="rowrap"><table class="ro"><colgroup><col style="width:56px"><col><col><col></colgroup><tr><th style="text-align:center">No</th><th>Name</th><th>Section</th><th>Vehicle</th></tr>${sv.staff.map(s => `<tr><td class="no">${s.no}</td><td class="nm">${esc(s.name)}</td><td>${esc(s.section || '')}</td><td class="pl">${esc(s.plate || '-')}</td></tr>`).join('')}</table></div></div>`; }
 
 /* --- Convoy sections: the list can grow; staff are grouped by it on the page and in the PDF --- */
 const SECTIONS = ['ELECT.UNIT','HVAC','GEN.UNIT','SUPPLY','TRANSPORT','PDU','HOSPITAL','PROCUREMENT','PERSONEL-HR'];
