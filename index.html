@@ -191,6 +191,7 @@ label.f select{width:100%;padding:10px 12px;border:1px solid var(--line);border-
 .cal button.sel{outline:3px solid var(--ink);outline-offset:1px}
 .calhead{display:flex;align-items:center;gap:8px}
 .calhead b{flex:1;text-align:center;font:800 16px/1.2 var(--f-label);letter-spacing:.04em;text-transform:uppercase}
+.cvconv{font:800 16px/1.2 var(--f-label);letter-spacing:.04em;color:var(--accent);text-transform:uppercase;margin-right:6px}
 .st{font-size:13px} .st.ok{color:var(--ok)} .st.no{color:var(--muted)}
 .ro td,.ro th{padding:6px 8px;text-align:left;border-bottom:1px solid var(--line);font-size:14px}
 .ro{width:100%;border-collapse:collapse}
@@ -204,7 +205,7 @@ label.f select{width:100%;padding:10px 12px;border:1px solid var(--line);border-
   <div class="wrap">
     <div class="brand">
       <div class="bolt" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg></div>
-      <div><h1>Critical Staff</h1><div class="sub">Naqoura - Sector West · v27</div></div>
+      <div><h1>Critical Staff</h1><div class="sub">Naqoura - Sector West · v28</div></div>
       <div class="me" id="me"></div>
     </div>
     <nav class="tabs" id="tabs" aria-label="Sections"></nav>
@@ -647,6 +648,8 @@ const carOf = (T, key) => onTrip(T, key) ? tripOf(T).people[key] : '';
 const tripStaff = T => S.cvStaff.filter(s => onTrip(T, s.key));
 const dayCount = (date, T) => { const r = recOf(date, T); return r ? Object.keys(r.people).length : 0; };
 const hasList = date => dayCount(date, 'TO') + dayCount(date, 'FROM') > 0;
+// To and From on one date are one convoy; convoys are numbered in date order
+const convoyNo = date => hasList(date) ? Object.keys(S.cvDays).filter(hasList).sort().indexOf(date) + 1 : 0;
 function tripSnapshot(T){
   return {dir: T, date: S.cvDate,
     staff: tripStaff(T).sort(bySection).map(s => ({key: s.key, no: s.no, name: s.name, idNo: s.idNo || '', section: s.section || '', phone: s.phone || '', plate: carOf(T, s.key)})),
@@ -736,7 +739,7 @@ function convoyView(){
     <div class="seg">${['TO','FROM'].map(X => `<button data-act="cvTrip" data-v="${X}" aria-pressed="${T === X}">${TRIP[X].name} · ${dayCount(S.cvDate, X)}</button>`).join('')}</div>
     <div class="small muted">${TRIP[T].route} · escorted by the Irish contingent.${ed ? ' Tick who travels and put them in a car.' : ''}</div>
     ${ed ? `<div class="stack" style="gap:6px"><h3 style="margin:0">Vehicles on this trip</h3>${cvCarsRow()}</div>` : pastView(T)}
-    <div class="row"><span style="font-family:var(--f-mono)"><b>${on}</b> of ${list.length} staff</span><span class="spacer"></span>${on ? `<button class="btn sm" data-act="cvPdf" data-v="view">View PDF</button><button class="btn sm" data-act="cvPdf" data-v="pdf">Download PDF</button><button class="btn sm" data-act="cvPdf" data-v="docx">Word</button>` : ''}</div>
+    <div class="row">${convoyNo(S.cvDate) ? `<b class="cvconv">Convoy No. ${convoyNo(S.cvDate)}</b>` : ''}<span style="font-family:var(--f-mono)"><b>${on}</b> of ${list.length} staff</span><span class="spacer"></span>${on ? `<button class="btn sm" data-act="cvPdf" data-v="view">View PDF</button><button class="btn sm" data-act="cvPdf" data-v="pdf">Download PDF</button><button class="btn sm" data-act="cvPdf" data-v="docx">Word</button>` : ''}</div>
   </div>
   ${ed ? `<div class="row"><input class="inp" id="cvQ" placeholder="Search name, ID or number" value="${esc(S.cvQuery)}" style="flex:1;min-width:180px">
     <div class="seg"><button data-act="cvShow" data-v="all" aria-pressed="${!S.cvOnly}">All</button><button data-act="cvShow" data-v="on" aria-pressed="${S.cvOnly}">On this trip</button></div></div>
