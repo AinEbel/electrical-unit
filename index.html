@@ -193,6 +193,22 @@ label.f select{width:100%;padding:10px 12px;border:1px solid var(--line);border-
 .calhead b{flex:1;text-align:center;font:800 16px/1.2 var(--f-label);letter-spacing:.04em;text-transform:uppercase}
 .cvconv{font:800 16px/1.2 var(--f-label);letter-spacing:.04em;color:var(--accent);text-transform:uppercase;margin-right:6px}
 .st{font-size:13px} .st.ok{color:var(--ok)} .st.no{color:var(--muted)}
+.regbox{border:2px solid var(--accent);border-radius:12px;padding:12px 14px;background:rgba(255,210,31,.08)}
+.regbox>b,.regbox .row>b{color:var(--accent);font:800 15px/1.2 var(--f-label);letter-spacing:.04em}
+.reglink{display:flex;gap:8px;align-items:center;flex-wrap:wrap;background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:6px 6px 6px 12px}
+.reglink code{flex:1;min-width:0;overflow-wrap:anywhere;font:600 14px/1.3 var(--f-mono);color:var(--accent)}
+.regtag{display:inline-block;font:700 12px/1.3 var(--f-body);color:var(--accent)}
+.regopts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:520px){.regopts{grid-template-columns:1fr}}
+.regopt{display:flex;gap:10px;align-items:flex-start;padding:14px;border:2px solid var(--line);border-radius:12px;cursor:pointer;background:var(--sunk)}
+.regopt input{width:20px;height:20px;margin-top:2px;accent-color:var(--accent)}
+.regopt b{display:block;font-size:17px}
+.regopt:has(input:checked){border-color:var(--accent);background:rgba(255,210,31,.12)}
+.regopt.off{opacity:.4;cursor:not-allowed}
+.regdone{border:2px solid var(--ok);border-radius:12px;padding:14px;font-size:17px}
+.stgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.stcard{display:flex;flex-direction:column;gap:8px}
+.stcard.me{border-color:var(--accent)}
 .rowrap{border:1px solid var(--line);border-radius:10px;overflow:auto}
 .ro{width:100%;min-width:520px;border-collapse:collapse;font-size:14px;table-layout:fixed}
 .ro th,.ro td{padding:9px 12px;text-align:left;border-right:1px solid var(--muted);border-bottom:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -212,7 +228,7 @@ label.f select{width:100%;padding:10px 12px;border:1px solid var(--line);border-
   <div class="wrap">
     <div class="brand">
       <div class="bolt" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M13 2 4 14h6l-1 8 9-12h-6z"/></svg></div>
-      <div><h1>Critical Staff</h1><div class="sub">Naqoura - Sector West · v31</div></div>
+      <div><h1>Critical Staff</h1><div class="sub">Naqoura - Sector West · v32</div></div>
       <div class="me" id="me"></div>
     </div>
     <nav class="tabs" id="tabs" aria-label="Sections"></nav>
@@ -243,13 +259,22 @@ function remember(k,v){ try{ if(v===undefined) return localStorage.getItem(k); l
 const TABS = [['convoy','Convoy'],['notes','Notes']];
 const OWNER_TABS = ['convoy'];
 const VIEWER = 'farah12+convoystaff@un.org', VIEWER_USER = 'staff';
-const loginEmail = v => v.trim().toLowerCase() === VIEWER_USER ? VIEWER : v.trim();
+// each staff member signs in with their ID number (CIV228370) and its numbers as password (228370);
+// the account sits on the supervisor's own address, so nothing is ever sent to the staff member
+const STAFF_RE = /^\s*([a-z]{2,5})[\s-]*(\d{4,})\s*$/i;
+const loginOfId = id => { const m = String(id || '').match(STAFF_RE); return m ? m[1].toLowerCase() + m[2] : ''; };
+const staffEmail = login => 'farah12+' + login + '@un.org';
+const isStaffEmail = e => /^farah12\+[a-z]+\d+@un\.org$/.test(e);
+const loginEmail = v => { const t = v.trim(); if (t.toLowerCase() === VIEWER_USER) return VIEWER; const l = loginOfId(t); return l ? staffEmail(l) : t; };
+// a password typed as the whole ID (CIV228370) still works
+const loginPass = (u, pw) => { const l = loginOfId(u); return l && loginOfId(pw) === l ? l.replace(/\D/g, '') : pw; };
+const regHash = () => (location.hash.match(/reg=(\d{4}-\d{2}-\d{2})/) || [])[1] || '';
 const STATUS = {new:'New', progress:'In progress', waiting:'Waiting parts', done:'Done'};
 const MARKS = [['P','Present'],['A','Absent'],['L','Leave'],['S','Sick'],['O','Off']];
 
 const S = { user:null, email:'', owner:false, me:null, team:{}, attendance:{}, notes:[], loaded:false,
   tab: remember('eu.tab') || 'convoy', orders:[], support:[], orderFilter:'open', supportFilter:'pending', openSupportId:null, openOrder:null, month: ym(new Date()), noteFilter:'pending', sites:[], readings:{}, kMonth: ym(new Date()), kFind:'', authMode:'signin', authMsg:'',
-  cvStaff:[], cvLoaded:false, cvCards:{}, cv:{date:'', direction:''}, cvCars:[], cvTrip: remember('eu.cvTrip') || '', cvDays:{}, cvCal:false, cvDate: isoDay(new Date()), cvMonth: isoDay(new Date()).slice(0, 7), cvInfoLoaded:false, cvSecs:null, cvSec:'', cvOnly:false, cvQuery:'', cvBusy:false };
+  cvStaff:[], cvLoaded:false, cvCards:{}, cv:{date:'', direction:''}, cvCars:[], cvTrip: remember('eu.cvTrip') || '', cvDays:{}, cvCal:false, cvDate: isoDay(new Date()), cvMonth: isoDay(new Date()).slice(0, 7), cvInfoLoaded:false, cvConvs:{}, cvRegs:{}, cvRegsLoaded:false, cvLogins:null, member:false, login:'', profile:null, profileLoaded:false, regDate: regHash(), stCards:{}, cvSecs:null, cvSec:'', cvOnly:false, cvQuery:'', cvBusy:false };
 let cvCardsOn = false;
 
 if (!CFG.firebase || !CFG.firebase.apiKey) {
@@ -266,14 +291,16 @@ let dataOn = false;
 auth.onAuthStateChanged(u => {
   unsubs.forEach(f => f()); unsubs = []; dataOn = false; cvCardsOn = false; S.cvStaff = []; S.cvCards = {}; S.cvLoaded = false;
   S.user = u; S.email = u && u.email ? u.email.toLowerCase() : ''; S.owner = !!u && u.emailVerified && S.email === OWNER; S.viewer = !!u && S.email === VIEWER;
+  S.member = !!u && isStaffEmail(S.email); S.login = S.member ? S.email.slice(8, S.email.indexOf('@')) : '';
+  S.cvConvs = {}; S.cvRegs = {}; S.cvRegsLoaded = false; S.cvLogins = null; S.profile = null; S.profileLoaded = false; S.stCards = {};
   S.team = {}; S.attendance = {}; S.notes = []; S.loaded = false; S.me = null;
-  if (u && (u.emailVerified || S.viewer)) listen();
+  if (u && (u.emailVerified || S.viewer || S.member)) listen();
   render();
 });
 
 function listen(){
   const fail = e => { console.warn(e); if (e.code === 'permission-denied') { S.loaded = true; render(); } };
-  if (S.viewer) S.loaded = true;
+  if (S.viewer || S.member) S.loaded = true;
   else if (S.owner) {
     unsubs.push(db.collection('team').onSnapshot(s => { S.team = {}; s.forEach(d => S.team[d.id] = d.data()); S.loaded = true; render(); }, fail));
   } else {
@@ -287,15 +314,19 @@ function listen(){
   if (S.owner) listenTeamData();
   // the shared login reads only the convoy days (who was selected), never the full staff list
   if (S.viewer) { S.cvLoaded = true; cvListenInfo(); }
+  // a staff member reads their own name card, the convoys and who registered
+  if (S.member) { S.cvLoaded = true; cvListenInfo(); cvListenRegs();
+    unsubs.push(db.collection('convoyLogins').doc(S.login).onSnapshot(d => { S.profile = d.exists ? d.data() : null; S.profileLoaded = true; render(); },
+      e => { console.warn(e); S.profileLoaded = true; render(); })); }
   if (S.owner) {
-    unsubs.push(db.collection('convoyStaff').orderBy('no').onSnapshot(s => { S.cvStaff = s.docs.map(d => ({key:d.id, ...d.data()})); S.cvLoaded = true; cvSecMigrate(); render(); }, e => { console.warn(e); S.cvLoaded = true; S.cvDenied = e.code === 'permission-denied'; render(); }));
-    cvListenInfo();
+    unsubs.push(db.collection('convoyStaff').orderBy('no').onSnapshot(s => { S.cvStaff = s.docs.map(d => ({key:d.id, ...d.data()})); S.cvLoaded = true; cvSecMigrate(); cvLoginsSync(false); cvApplyRegs(); render(); }, e => { console.warn(e); S.cvLoaded = true; S.cvDenied = e.code === 'permission-denied'; render(); }));
+    cvListenInfo(); cvListenRegs(); cvListenLogins();
   }
 }
 function cvListenInfo(){
   {
     unsubs.push(db.collection('convoyInfo').onSnapshot(s => {
-      S.cvCars = []; const days = {}, rank = {day: 3, saved: 2, trip: 1};
+      S.cvCars = []; const days = {}, convs = {}, rank = {day: 3, saved: 2, trip: 1};
       // older records ("saved" trips and the two working trips) still show, a "day" record wins
       const put = (date, T, rec) => { if (!date || !TRIP[T]) return; const d = days[date] = days[date] || {};
         if (!d[T] || rank[rec.src] > rank[d[T].src]) d[T] = rec; };
@@ -303,11 +334,12 @@ function cvListenInfo(){
         if (d.id === 'vehicles') S.cvCars = x.list || [];
         else if (d.id === 'current') S.cv = {date: x.date || '', direction: x.direction || ''};
         else if (d.id === 'sections') S.cvSecs = x.list || null;
+        else if (x.kind === 'conv') convs[x.date] = x;
         else if (x.kind === 'day') put(x.date, x.dir, {src: 'day', people: x.people || {}, drivers: x.drivers || {}, staff: x.staff, vehicles: x.vehicles});
         else if (x.kind === 'saved') { const people = {}, drivers = {}; (x.staff || []).forEach(p => people[p.key] = p.plate || ''); (x.vehicles || []).forEach(v => { if (v.driver) drivers[v.plate] = v.driver; });
           put(x.date, x.dir, {src: 'saved', people, drivers, staff: x.staff, vehicles: x.vehicles}); }
         else if (d.id === 'tripTO' || d.id === 'tripFROM') put(x.date, d.id.slice(4), {src: 'trip', people: x.people || {}, drivers: x.drivers || {}}); });
-      S.cvDays = days; S.cvInfoLoaded = true; render(); }, e => console.warn(e)));
+      S.cvDays = days; S.cvConvs = convs; S.cvInfoLoaded = true; cvApplyRegs(); render(); }, e => { console.warn(e); S.cvInfoLoaded = true; render(); }));
   }
 }
 // ID card pictures are large, so they load only once the Convoy tab is opened
@@ -337,7 +369,7 @@ function listenTeamData(){
   unsubs.push(db.collection('readings').onSnapshot(s => { S.readings = {}; s.forEach(d => S.readings[d.id] = d.data().values || {}); render(); }, fail));
   unsubs.push(db.collection('notes').orderBy('at','desc').limit(300).onSnapshot(s => { S.notes = s.docs.map(d => ({id:d.id, ...d.data()})); render(); }, fail));
 }
-const allowed = () => S.owner || S.viewer || !!(S.me && S.me.active);
+const allowed = () => S.owner || S.viewer || S.member || !!(S.me && S.me.active);
 const nameOf = e => (S.team[e] && S.team[e].name) || (e === OWNER ? 'Supervisor' : e);
 const members = () => Object.entries(S.team).filter(([,t]) => t.active).map(([e,t]) => ({email:e, ...t})).sort((a,b) => (a.name||a.email).localeCompare(b.name||b.email));
 
@@ -351,17 +383,17 @@ window.addEventListener('resize', fitAtt);
 function render(){
   document.title = 'Critical Staff';
   if (typing()) { pending = true; return; }
-  const ok = S.user && (S.user.emailVerified || S.viewer) && S.loaded && allowed();
-  $('#me').innerHTML = S.user ? `<div>${esc(S.owner ? 'Supervisor' : S.viewer ? 'Staff · view only' : (S.me && S.me.name) || S.email)}</div><button data-act="signout">Sign out</button>` : '';
-  const tabs = S.viewer ? TABS.filter(([k]) => k === 'convoy') : TABS.filter(([k]) => !OWNER_TABS.includes(k) || S.owner);
-  if (!tabs.some(([k]) => k === S.tab)) S.tab = tabs[0][0];
-  $('#tabs').innerHTML = ok ? tabs.map(([k,l]) => `<button class="tab" data-tab="${k}" aria-selected="${S.tab===k}">${l}${k==='orders'&&newCount()?`<span class="dot">${newCount()}</span>`:''}${k==='support'&&openSupport().length?`<span class="dot red">${openSupport().length}</span>`:''}</button>`).join('') : '';
+  const ok = S.user && (S.user.emailVerified || S.viewer || S.member) && S.loaded && allowed();
+  $('#me').innerHTML = S.user ? `<div>${esc(S.owner ? 'Supervisor' : S.viewer ? 'Staff · view only' : S.member ? (S.profile && S.profile.name) || S.login.toUpperCase() : (S.me && S.me.name) || S.email)}</div><button data-act="signout">Sign out</button>` : '';
+  const tabs = S.viewer || S.member ? TABS.filter(([k]) => k === 'convoy') : TABS.filter(([k]) => !OWNER_TABS.includes(k) || S.owner);
+  if (S.user && S.loaded && !tabs.some(([k]) => k === S.tab)) S.tab = tabs[0][0];
+  $('#tabs').innerHTML = ok && !S.member ? tabs.map(([k,l]) => `<button class="tab" data-tab="${k}" aria-selected="${S.tab===k}">${l}${k==='orders'&&newCount()?`<span class="dot">${newCount()}</span>`:''}${k==='support'&&openSupport().length?`<span class="dot red">${openSupport().length}</span>`:''}</button>`).join('') : '';
   const v = $('#view'); v.classList.toggle('wide', S.tab === 'attendance'); const sx = v.querySelector('.scrollx')?.scrollLeft;
   if (!S.user) v.innerHTML = authView();
-  else if (!S.user.emailVerified && !S.viewer) v.innerHTML = verifyView();
+  else if (!S.user.emailVerified && !S.viewer && !S.member) v.innerHTML = verifyView();
   else if (!S.loaded) v.innerHTML = `<div class="empty"><b>Loading</b>Checking your access.</div>`;
   else if (!allowed()) v.innerHTML = `<div class="gate stack"><h2>${S.me ? 'Access removed' : 'Not approved yet'}</h2><p class="muted">${S.me ? 'The supervisor has removed your access.' : 'Ask the supervisor to add <b>'+esc(S.email)+'</b> to the team. This page opens as soon as they do.'}</p></div>`;
-  else v.innerHTML = ({orders:ordersView, support:supportView, kwh:kwhView, attendance:attView, notes:notesView, convoy:convoyView, team:teamView})[S.tab]();
+  else v.innerHTML = ({orders:ordersView, support:supportView, kwh:kwhView, attendance:attView, notes:notesView, convoy:S.member ? regView : convoyView, team:teamView})[S.tab]();
   if (S.tab === 'convoy') cvListenCards();
   fitAtt();
   if (sx) { const el = v.querySelector('.scrollx'); if (el) el.scrollLeft = sx; }
@@ -370,8 +402,9 @@ function render(){
 function authView(){
   const up = S.authMode === 'signup';
   return `<form class="gate card stack" id="fAuth"><h2>${up ? 'Create your account' : 'Sign in'}</h2>
-  <p class="muted small" style="margin:0">${up ? 'Use the work email your supervisor added to the team.' : 'Use your work email and password.'}</p>
-  <label class="f">Email${up ? '' : ' or user name'}<input id="aEmail" type="${up ? 'email' : 'text'}" autocomplete="username" autocapitalize="none" required></label>
+  ${!up && S.regDate ? `<div class="regbox small"><b>Convoy ${fmtD(S.regDate)}</b><br>Sign in to register for this convoy.</div>` : ''}
+  <p class="muted small" style="margin:0">${up ? 'Use the work email your supervisor added to the team.' : 'Staff: your ID number, for example <b>CIV228370</b>. Password: the numbers of your ID, for example <b>228370</b>.'}</p>
+  <label class="f">${up ? 'Email' : 'ID number or email'}<input id="aEmail" type="${up ? 'email' : 'text'}" autocomplete="username" autocapitalize="none" placeholder="${up ? '' : 'CIV228370'}" required></label>
   <label class="f">Password<input id="aPass" type="password" autocomplete="${up?'new-password':'current-password'}" minlength="6" required></label>
   ${S.authMsg ? `<div class="${S.authMsg.startsWith('✓')?'ok':'err'}">${esc(S.authMsg)}</div>` : ''}
   <button class="btn primary" type="submit">${up ? 'Create account' : 'Sign in'}</button>
@@ -686,6 +719,158 @@ function tripSet(T, patch){ if (!cvEditable()) return Promise.resolve();
 function cvTick(key, on){ const T = cvT(), people = {...tripOf(T).people}; if (on) people[key] = people[key] || ''; else delete people[key]; tripSet(T, {people}); }
 function cvPick(key, plate){ const T = cvT(); tripSet(T, {people: {...tripOf(T).people, [key]: plate}}); }
 
+/* --- Staff registration: the supervisor opens a convoy, each staff member registers once for one trip --- */
+const regsFor = date => Object.values(S.cvRegs).filter(r => r.date === date).sort((a, b) => a.at - b.at);
+const regOf = (date, key) => regsFor(date).find(r => r.key === key);
+const regLink = date => location.origin + location.pathname + '#reg=' + date;
+const fmtWhen = ms => { const d = new Date(ms); return DAYS[d.getDay()].slice(0, 3) + ' ' + fmtD(isoDay(d)) + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+const localInput = ms => { const d = new Date(ms); return isoDay(d) + 'T' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+// by default registration closes the evening before the convoy
+const defClose = date => { const d = new Date(date + 'T18:00'); d.setDate(d.getDate() - 1); return d.getTime() > Date.now() ? d.getTime() : new Date(date + 'T07:00').getTime(); };
+const regOpenNow = c => !!c && c.closesAt > Date.now() && c.date >= isoDay(new Date());
+function regMessage(date){ const c = S.cvConvs[date], dt = new Date(date + 'T12:00');
+  return `Convoy ${DAYS[dt.getDay()]} ${fmtD(date)} (To / From Naqoura)\nRegister before ${fmtWhen(c.closesAt)}:\n${regLink(date)}\n\nUser: your ID number (example CIV228370)\nPassword: the numbers of your ID (example 228370)`; }
+function regBox(){ const date = S.cvDate, c = S.cvConvs[date];
+  if (!c) return `<div class="regbox stack" style="gap:8px"><b>Staff registration</b><span class="small">Let staff register themselves for this convoy. Choose when registration closes, then send the link in the WhatsApp group.</span>
+    <div class="row"><label class="f" style="flex:1;min-width:210px">Registration closes<input type="datetime-local" id="regClose" value="${localInput(defClose(date))}"></label><button class="btn primary" data-act="regOpen">Open registration</button></div></div>`;
+  const regs = regsFor(date), open = regOpenNow(c), n = T => regs.filter(r => r.dir === T).length, dr = regs.filter(r => r.canDrive).length;
+  return `<div class="regbox stack" style="gap:8px"><div class="row"><b>Staff registration</b><span class="spacer"></span><span class="st ${open ? 'ok' : 'no'}">${open ? 'Open until ' + fmtWhen(c.closesAt) : 'Closed · ' + fmtWhen(c.closesAt)}</span></div>
+    <div class="reglink"><code>${esc(regLink(date))}</code><button class="btn sm primary" data-act="regCopy">Copy for WhatsApp</button></div>
+    <div class="small"><b>${regs.length}</b> registered · To Naqoura ${n('TO')} · From Naqoura ${n('FROM')}${dr ? ' · 🚗 ' + dr + ' can drive' : ''}</div>
+    <div class="row"><button class="btn sm" data-act="regList">See registrations</button><button class="btn sm" data-act="regEdit">Change closing time</button>${open ? '<button class="btn sm" data-act="regCloseNow">Close now</button>' : ''}</div></div>`; }
+function regEditSheet(){ const c = S.cvConvs[S.cvDate];
+  return `<div class="row" style="margin-bottom:12px"><h2 style="margin:0">Registration ${fmtD(S.cvDate)}</h2><span class="spacer"></span><button class="btn ghost" data-act="close">Close</button></div>
+  <form id="fRegEdit" class="stack"><label class="f">Registration closes<input type="datetime-local" id="regClose2" required value="${localInput(c.closesAt)}"></label>
+  <div class="err" id="regEditMsg"></div>
+  <div class="row"><button class="btn ghost" type="button" data-act="regStop">Stop registration for this date</button><span class="spacer"></span><button class="btn primary" type="submit">Save</button></div>
+  <p class="small muted" style="margin:0">Stopping removes the link. People already on the list stay on it.</p></form>`; }
+function regListSheet(){ const regs = regsFor(S.cvDate);
+  return `<div class="row" style="margin-bottom:12px"><h2 style="margin:0">Registered · ${regs.length}</h2><span class="spacer"></span><button class="btn ghost" data-act="close">Close</button></div>
+  ${regs.length ? `<ul class="inlist">${regs.map(r => `<li><span class="cvno">${r.no}</span><span style="flex:1;min-width:0"><b>${esc(r.name)}</b><br><span class="small muted">${esc(TRIP[r.dir].name)}${r.canDrive ? ' · 🚗 can drive' : ''} · ${fmtWhen(r.at)}</span></span><button class="btn sm ghost" data-act="regDel" data-id="${esc(r.id)}">Undo</button></li>`).join('')}</ul>
+  <p class="small muted">Undo lets that person register again. To take someone off the trip, untick them on the list.</p>` : '<div class="empty small">Nobody has registered yet.</div>'}`; }
+async function regOpen(){ const ms = new Date(val('regClose')).getTime();
+  if (!ms || ms <= Date.now()) { toast('Choose a closing time in the future'); return; }
+  try { await db.collection('convoyInfo').doc('conv_' + S.cvDate).set({kind: 'conv', date: S.cvDate, closesAt: ms, createdAt: Date.now()}); toast('Registration open. Copy the link for WhatsApp.'); } catch (e) { failed(e); } }
+function regCopy(){ const txt = regMessage(S.cvDate);
+  const done = () => toast('Copied. Paste it in the WhatsApp group.');
+  const old = () => { const ta = document.createElement('textarea'); ta.value = txt; document.body.appendChild(ta); ta.select(); try { document.execCommand('copy'); done(); } catch (e) { toast('Select the link and copy it'); } ta.remove(); };
+  try { navigator.clipboard.writeText(txt).then(done, old); } catch (e) { old(); } }
+// a registration goes straight onto the supervisor's list (no car yet); after that the supervisor decides
+const cvApplying = new Set();
+function cvApplyRegs(){ if (!S.owner || !S.cvLoaded || !S.cvInfoLoaded || !S.cvRegsLoaded || !S.cvStaff.length) return; const today = isoDay(new Date()), keep = S.cvDate; let any = false;
+  Object.values(S.cvRegs).filter(r => !r.applied && r.date >= today && TRIP[r.dir] && !cvApplying.has(r.id)).forEach(r => { cvApplying.add(r.id); any = true; let p = null;
+    const s = S.cvStaff.find(x => x.key === r.key); S.cvDate = r.date;
+    try { if (s && !onTrip(r.dir, s.key)) p = tripSet(r.dir, {people: {...tripOf(r.dir).people, [s.key]: ''}}); } finally { S.cvDate = keep; }
+    Promise.resolve(p).then(() => db.collection('convoyReg').doc(r.id).update({applied: true})).catch(failed).finally(() => cvApplying.delete(r.id)); });
+  if (any) render(); }
+function cvListenRegs(){ unsubs.push(db.collection('convoyReg').onSnapshot(s => { S.cvRegs = {}; s.forEach(d => S.cvRegs[d.id] = {id: d.id, ...d.data()}); S.cvRegsLoaded = true; cvApplyRegs(); render(); },
+  e => { console.warn(e); S.cvRegsLoaded = true; render(); })); }
+
+/* --- Staff logins: one per ID number, made from the supervisor's page --- */
+function cvListenLogins(){ unsubs.push(db.collection('convoyLogins').onSnapshot(s => { S.cvLogins = {}; s.forEach(d => S.cvLogins[d.id] = d.data()); cvLoginsSync(false); render(); },
+  e => { console.warn(e); S.cvLoginsDenied = true; render(); })); }
+function cvLoginWanted(){ const out = {};
+  S.cvStaff.forEach(s => { const m = String(s.idNo || '').match(STAFF_RE); if (!m || m[2].length < 6) return; const l = m[1].toLowerCase() + m[2];
+    if (!out[l]) out[l] = {pw: m[2], doc: {key: s.key, no: s.no, name: s.name || '', idNo: s.idNo || '', section: s.section || ''}}; });
+  return out; }
+let cvMaker = null, cvLoginBusy = false; const cvLoginFailed = new Set();
+async function cvMakeLogin(login, pw){
+  if (!cvMaker) { const app = firebase.apps.find(a => a.name === 'logins') || firebase.initializeApp(CFG.firebase, 'logins'); cvMaker = app.auth(); await cvMaker.setPersistence(firebase.auth.Auth.Persistence.NONE); }
+  try { await cvMaker.createUserWithEmailAndPassword(staffEmail(login), pw); }
+  catch (e) { if (!String(e.code || '').includes('email-already-in-use')) throw e; }
+  await cvMaker.signOut().catch(() => {}); }
+// with the button: make every missing login; on its own: only for new staff, once logins exist
+async function cvLoginsSync(byHand){
+  if (!S.owner || !S.cvLogins || !S.cvStaff.length || cvLoginBusy) return;
+  if (!byHand && !Object.keys(S.cvLogins).length) return;
+  const want = cvLoginWanted(), have = {...S.cvLogins}; let made = 0, bad = 0;
+  const todo = Object.keys(want).filter(l => !have[l] && (byHand || !cvLoginFailed.has(l)));
+  const fix = Object.keys(want).filter(l => have[l] && Object.keys(want[l].doc).some(k => have[l][k] !== want[l].doc[k]));
+  const old = Object.keys(have).filter(l => !want[l]);
+  if (!todo.length && !fix.length && !old.length) { if (byHand) toast('Every staff member already has a login'); return; }
+  cvLoginBusy = true; if (byHand) { S.cvLoginMsg = 'Making logins…'; render(); }
+  try {
+    for (const l of old) await db.collection('convoyLogins').doc(l).delete();
+    for (const l of fix) await db.collection('convoyLogins').doc(l).set({...have[l], ...want[l].doc});
+    for (const l of todo) { if (byHand) { S.cvLoginMsg = 'Making logins… ' + (made + bad + 1) + ' of ' + todo.length; cvLoginRefresh(); }
+      try { await cvMakeLogin(l, want[l].pw); } catch (e) { console.warn(e); cvLoginFailed.add(l); bad++; continue; }
+      cvLoginFailed.delete(l); await db.collection('convoyLogins').doc(l).set({...want[l].doc, at: Date.now()}); made++; }
+  } catch (e) { failed(e); }
+  finally { cvLoginBusy = false; S.cvLoginMsg = ''; }
+  if (made) toast(made + ' staff login' + (made > 1 ? 's' : '') + ' ready');
+  if (bad) toast(bad + ' login' + (bad > 1 ? 's' : '') + ' could not be made. Wait a few minutes, then tap Make logins again.', true);
+  cvLoginRefresh(); render(); }
+function cvLoginRefresh(){ if (S.sheetKind === 'logins' && !$('#sheet').hidden) $('#panel').innerHTML = cvLoginSheet(); }
+function cvLoginSheet(){ const want = cvLoginWanted(), have = S.cvLogins || {}, missing = Object.keys(want).filter(l => !have[l]).length;
+  const noId = S.cvStaff.filter(s => !loginOfId(s.idNo) || loginOfId(s.idNo).replace(/\D/g, '').length < 6);
+  return `<div class="row" style="margin-bottom:12px"><h2 style="margin:0">Staff logins</h2><span class="spacer"></span><button class="btn ghost" data-act="close">Close</button></div>
+  <div class="stack" style="gap:10px"><p class="small muted" style="margin:0">Each person signs in with their ID number, for example <b>CIV228370</b>, and the numbers as password, <b>228370</b>. New staff you add get a login on their own.</p>
+  ${S.cvLoginsDenied ? '<div class="err">The database blocked the logins. Update the Firestore rules first.</div>' : ''}
+  <div class="row"><span><b>${Object.keys(want).length - missing}</b> of ${Object.keys(want).length} logins ready</span><span class="spacer"></span>${missing ? `<button class="btn primary" data-act="cvLogins" ${cvLoginBusy ? 'disabled' : ''}>${esc(S.cvLoginMsg || 'Make ' + missing + ' login' + (missing > 1 ? 's' : ''))}</button>` : '<span class="st ok">✓ All ready</span>'}</div>
+  ${noId.length ? `<div class="err small">No login for: ${noId.map(s => esc(s.no + '. ' + s.name)).join(', ')}. Add their ID number (like CIV 228370) with Edit.</div>` : ''}
+  <div class="rowrap"><table class="ro"><colgroup><col style="width:56px"><col><col><col style="width:90px"></colgroup><tr><th style="text-align:center">No</th><th>Name</th><th>User</th><th>Password</th></tr>
+  ${S.cvStaff.filter(s => want[loginOfId(s.idNo)]).map(s => { const l = loginOfId(s.idNo); return `<tr><td class="no">${s.no}</td><td class="nm">${esc(s.name)}</td><td style="font-family:var(--f-mono)">${esc(l.toUpperCase())}${have[l] ? '' : ' <span class="small muted">(not made)</span>'}</td><td style="font-family:var(--f-mono)">${esc(want[l].pw)}</td></tr>`; }).join('')}</table></div></div>`; }
+
+/* --- What a staff member sees: register once, then a locked view of the convoy, without cars or drivers --- */
+const tripRank = (date, T) => date + (T === 'FROM' ? '1' : '0');
+function stLastTrip(before){ const key = S.profile.key; let best = null;
+  const put = (date, T) => { if (date < before && (!best || tripRank(date, T) > tripRank(best.date, best.dir))) best = {date, dir: T}; };
+  Object.entries(S.cvDays).forEach(([date, d]) => ['TO', 'FROM'].forEach(T => { if (d[T] && typeof d[T].people[key] === 'string') put(date, T); }));
+  Object.values(S.cvRegs).forEach(r => { if (r.key === key && !r.applied) put(r.date, r.dir); });
+  return best; }
+// last trip To Naqoura: this time only From Naqoura, and the other way round; no trip yet: free choice
+const stAllowed = before => { const l = stLastTrip(before); return l ? (l.dir === 'TO' ? 'FROM' : 'TO') : ''; };
+function stPeople(date, T){ const r = recOf(date, T), out = [], seen = new Set();
+  (r && r.staff || []).forEach(x => { if (typeof r.people[x.key] === 'string' && !seen.has(x.key)) { seen.add(x.key); out.push(x); } });
+  Object.values(S.cvRegs).forEach(g => { if (g.date === date && g.dir === T && !g.applied && !seen.has(g.key)) { seen.add(g.key); out.push({key: g.key, no: g.no, name: g.name, idNo: g.idNo, section: g.section}); } });
+  return out.sort(bySection); }
+function stCard(x){ const img = S.stCards[x.key];
+  if (img === undefined) { S.stCards[x.key] = null; db.collection('convoyCards').doc(x.key).get().then(d => { S.stCards[x.key] = d.exists && d.data().img || ''; render(); }).catch(() => { S.stCards[x.key] = ''; render(); }); }
+  return `<div class="card stcard ${S.profile && x.key === S.profile.key ? 'me' : ''}"><div class="row" style="gap:8px;flex-wrap:nowrap"><span class="cvno">${x.no}</span><span style="min-width:0;flex:1"><span class="nmx">${esc(x.name)}</span><br><span class="small muted" style="font-family:var(--f-mono)">${esc(x.idNo || '')}</span></span></div>
+  <div class="cvthumb">${img ? `<img alt="ID card of ${esc(x.name)}" src="${img}">` : img === '' ? 'No ID card' : 'Loading picture…'}</div>
+  <span class="cvsecname" style="text-align:left">${esc(x.section || '')}</span></div>`; }
+function regView(){
+  if (!S.profileLoaded || !S.cvInfoLoaded || !S.cvRegsLoaded) return `<div class="empty"><b>Loading</b>Getting the convoy.</div>`;
+  if (!S.profile) return `<div class="gate stack"><h2>Login not linked</h2><p class="muted">The ID <b>${esc(S.login.toUpperCase())}</b> is not on the convoy staff list. Ask the supervisor.</p></div>`;
+  const today = isoDay(new Date()), list = Object.values(S.cvConvs).filter(c => c.date >= today).sort((a, b) => a.date < b.date ? -1 : 1);
+  const asked = S.regDate && S.cvConvs[S.regDate] ? S.regDate : '', date = asked || (list[0] || {}).date;
+  const lost = S.regDate && !S.cvConvs[S.regDate] ? `<div class="err">The convoy of ${fmtD(S.regDate)} is not open for registration.</div>` : '';
+  if (!date) return `<div class="stack">${lost}<div class="empty"><b>No convoy is open right now</b>The supervisor sends the link in the WhatsApp group when a new convoy opens.</div></div>`;
+  S.regShown = date;
+  const c = S.cvConvs[date], mine = S.cvRegs[date + '_' + S.login], open = regOpenNow(c), dt = new Date(date + 'T12:00');
+  const picker = list.length > 1 || (asked && !list.some(x => x.date === asked)) ? `<div class="seg">${list.map(x => `<button data-act="regPick" data-v="${x.date}" aria-pressed="${x.date === date}">${fmtD(x.date)}</button>`).join('')}</div>` : '';
+  let body;
+  if (mine) body = `<div class="regdone">✓ You are registered: <b>${esc(TRIP[mine.dir].name)}</b><div class="small muted" style="margin-top:4px">${esc(TRIP[mine.dir].route)}</div></div>
+    <p class="small muted" style="margin:0">🔒 Your registration is locked. For any change, contact the supervisor.</p>`;
+  else if (open) { const only = stAllowed(date), last = stLastTrip(date);
+    body = `<form id="fReg" class="stack" style="gap:12px"><h3 style="margin:0">Choose your trip</h3>
+    <div class="regopts">${['TO', 'FROM'].map(T => `<label class="regopt ${only && only !== T ? 'off' : ''}"><input type="radio" name="regDir" value="${T}" ${only && only !== T ? 'disabled' : ''} ${only === T ? 'checked' : ''}><span><b>${TRIP[T].name}</b><span class="small muted">${TRIP[T].route}</span></span></label>`).join('')}</div>
+    <p class="small" style="margin:0">${last ? `Your last trip was <b>${TRIP[last.dir].name}</b> on ${fmtD(last.date)}, so this time you can only register <b>${TRIP[only].name}</b>.` : 'Choose To Naqoura or From Naqoura.'}</p>
+    <label class="pick" style="gap:10px"><input type="checkbox" id="regDrive" style="width:20px;height:20px;accent-color:var(--accent)"> <b>I can drive</b></label>
+    <div class="err" id="regMsg"></div>
+    <button class="btn primary" type="submit">Register</button>
+    <p class="small muted" style="margin:0">You can register only once. After that the page is view only.</p></form>`; }
+  else body = `<div class="empty"><b>Registration is closed</b>You did not register for this convoy. For any change, contact the supervisor.</div>`;
+  const people = mine || !open ? `<div class="stack">${['TO', 'FROM'].map(T => { const l = stPeople(date, T);
+      return `<h3 class="sechead">${TRIP[T].name} <span>${l.length} staff</span></h3>${l.length ? `<div class="stgrid">${l.map(stCard).join('')}</div>` : '<div class="empty small">Nobody yet.</div>'}`; }).join('')}</div>` : '';
+  return `<div class="stack">${lost}${picker}
+  <div class="card stack" style="gap:12px;border-color:var(--accent)">
+    <div class="row"><h2 style="margin:0">Convoy ${DAYS[dt.getDay()]} ${fmtD(date)}</h2><span class="spacer"></span><span class="st ${open ? 'ok' : 'no'}">${open ? 'Registration open until ' + fmtWhen(c.closesAt) : 'Registration closed'}</span></div>
+    <div class="small muted">${esc(S.profile.name)} · ${esc(S.profile.idNo)} · escorted by the Irish contingent</div>
+    ${body}</div>
+  ${people}</div>`; }
+async function regSubmit(){ const date = S.regShown, c = S.cvConvs[date], msg = t => { const m = $('#regMsg'); if (m) m.textContent = t; };
+  const dir = (document.querySelector('input[name="regDir"]:checked') || {}).value, drive = !!($('#regDrive') || {}).checked;
+  if (!dir) { msg('Choose To Naqoura or From Naqoura.'); return; }
+  const only = stAllowed(date); if (only && dir !== only) { msg('You can only register ' + TRIP[only].name + ' this time.'); return; }
+  if (!regOpenNow(c)) { msg('Registration is closed.'); return; }
+  if (!confirm('Register for ' + TRIP[dir].name + ' on ' + fmtD(date) + (drive ? ', and you can drive' : '') + '?\n\nYou cannot change it afterwards.')) return;
+  const p = S.profile;
+  try { await db.collection('convoyReg').doc(date + '_' + S.login).set({date, dir, canDrive: drive, login: S.login, key: p.key, no: p.no, name: p.name, idNo: p.idNo, section: p.section || '', at: Date.now(), applied: false});
+    toast('✓ You are registered: ' + TRIP[dir].name); }
+  catch (e) { console.warn(e); msg(e.code === 'permission-denied' ? 'Not registered: registration is closed, or you are already registered.' : 'Not registered. Check your connection and try again.'); } }
+window.addEventListener('hashchange', () => { S.regDate = regHash(); render(); });
+
 /* --- Convoy calendar: a yellow square on every date that has a list --- */
 const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
@@ -737,7 +922,7 @@ function cvCard(s){ const img = S.cvCards[s.key], T = cvT(), on = onTrip(T, s.ke
   <label class="pick"><input type="checkbox" data-cvtick="${esc(s.key)}" ${on?'checked':''} aria-label="${esc(TRIP[T].name)}: ${esc(s.name)}">
   <span class="cvno">${s.no}</span><span style="min-width:0;flex:1"><span class="nmx">${esc(s.name)}</span><br><span class="small muted" style="font-family:var(--f-mono)">${esc(s.idNo||'No ID number')}</span></span></label>
   <div class="cvthumb">${img ? `<img alt="ID card of ${esc(s.name)}" src="${img}">` : (s.hasImg ? 'Loading picture…' : 'No ID card')}</div>
-  <div class="meta"><span style="font-family:var(--f-mono)">${esc(s.phone||'No phone')}</span></div>
+  <div class="meta"><span style="font-family:var(--f-mono)">${esc(s.phone||'No phone')}</span>${(rg => rg ? `<span class="regtag">✍ Registered: ${esc(TRIP[rg.dir].name)}${rg.canDrive ? ' · 🚗 can drive' : ''}</span>` : '')(regOf(S.cvDate, s.key))}</div>
   <select class="cvcar" data-cvcar="${esc(s.key)}" aria-label="Vehicle for ${esc(s.name)}">${cvCarOptions(carOf(T, s.key))}</select>
   <div class="row"><span class="cvlbl"><span class="pill ${on?'p-done':'p-off'}">${on ? esc(TRIP[T].name) : 'Not on this trip'}</span><span class="cvsecname">${esc(secOf(s))}</span></span><span class="spacer"></span><button class="btn sm ghost" data-act="cvEdit" data-id="${esc(s.key)}">Edit</button></div></div>`; }
 
@@ -749,11 +934,12 @@ function convoyView(){
     <div class="row" style="justify-content:center"><label class="btn primary">Load staff list file<input type="file" id="cvImport" accept=".json,application/json" hidden></label><button class="btn" data-act="cvAdd">+ Add new staff</button></div></div>`;
   const ed = cvEditable(), dt = new Date(S.cvDate + 'T12:00');
   return `<div class="stack">
-  <div class="row"><h2 style="margin:0">Convoy</h2><span class="spacer"></span><button class="btn ${S.cvCal ? '' : 'primary'}" data-act="cvCal" aria-expanded="${S.cvCal}">${S.cvCal ? 'Close calendar' : 'Open calendar'}</button></div>
+  <div class="row"><h2 style="margin:0">Convoy</h2><span class="spacer"></span>${S.owner ? '<button class="btn" data-act="cvLoginSheet">Staff logins</button>' : ''}<button class="btn ${S.cvCal ? '' : 'primary'}" data-act="cvCal" aria-expanded="${S.cvCal}">${S.cvCal ? 'Close calendar' : 'Open calendar'}</button></div>
   ${S.cvCal ? calView() : ''}
   <div class="card stack" style="gap:10px;border-color:var(--accent)">
     <div class="row"><h2 style="margin:0">${DAYS[dt.getDay()]} ${fmtD(S.cvDate)}</h2><span class="spacer"></span><span class="st ${ed ? 'ok' : 'no'}">${ed ? '✓ Changes save automatically' : S.viewer ? 'View only' : 'Past date: view only'}</span></div>
     <div class="seg">${['TO','FROM'].map(X => `<button data-act="cvTrip" data-v="${X}" aria-pressed="${T === X}">${TRIP[X].name} · ${dayCount(S.cvDate, X)}</button>`).join('')}</div>
+    ${ed && S.owner ? regBox() : ''}
     <div class="small muted">${TRIP[T].route} · escorted by the Irish contingent.${ed ? ' Tick who travels and put them in a car.' : ''}</div>
     ${ed ? `<div class="stack" style="gap:6px"><h3 style="margin:0">Vehicles on this trip</h3>${cvCarsRow()}</div>` : pastView(T)}
     <div class="row">${convoyNo(S.cvDate) ? `<b class="cvconv">Convoy No. ${convoyNo(S.cvDate)}</b>` : ''}<span style="font-family:var(--f-mono)"><b>${on}</b>${S.viewer ? '' : ' of ' + list.length} staff</span><span class="spacer"></span>${on ? `<button class="btn sm" data-act="cvPdf" data-v="view">View PDF</button><button class="btn sm" data-act="cvPdf" data-v="pdf">Download PDF</button><button class="btn sm" data-act="cvPdf" data-v="docx">Word</button>` : ''}</div>
@@ -977,6 +1163,18 @@ document.addEventListener('click', e => {
     else { t.dataset.confirm = 1; t.textContent = 'Tap again to delete for good'; t.classList.add('danger'); $('#cvFormMsg').textContent = 'To leave someone out for one week only, untick them instead.'; } }
   if (a === 'cvPdf') cvOut(t.dataset.v === 'view' ? 'pdf' : t.dataset.v, t.dataset.v === 'view');
   if (a === 'cvCal') { S.cvCal = !S.cvCal; render(); }
+  if (a === 'cvLoginSheet') openSheet(cvLoginSheet(), null, 'logins');
+  if (a === 'cvLogins') cvLoginsSync(true);
+  if (a === 'regOpen') regOpen();
+  if (a === 'regCopy') regCopy();
+  if (a === 'regList') openSheet(regListSheet(), null, 'convoy');
+  if (a === 'regEdit') openSheet(regEditSheet(), null, 'convoy');
+  if (a === 'regCloseNow') db.collection('convoyInfo').doc('conv_' + S.cvDate).update({closesAt: Date.now()}).then(() => toast('Registration closed')).catch(failed);
+  if (a === 'regStop') { if (t.dataset.confirm) { db.collection('convoyInfo').doc('conv_' + S.cvDate).delete().then(() => toast('Registration stopped')).catch(failed); closeSheet(); }
+    else { t.dataset.confirm = 1; t.textContent = 'Tap again to stop'; t.classList.add('danger'); } }
+  if (a === 'regDel') { if (t.dataset.confirm) db.collection('convoyReg').doc(t.dataset.id).delete().then(() => { toast('They can register again'); openSheet(regListSheet(), null, 'convoy'); }).catch(failed);
+    else { t.dataset.confirm = 1; t.textContent = 'Tap again'; t.classList.add('danger'); } }
+  if (a === 'regPick') { location.hash = 'reg=' + t.dataset.v; }
   if (a === 'cvDay') { S.cvDate = t.dataset.v; render(); }
   if (a === 'cvMonth') { const [y, m] = S.cvMonth.split('-').map(Number); S.cvMonth = isoDay(new Date(y, m - 1 + Number(t.dataset.v), 1)).slice(0, 7); render(); }
   if (a === 'cvCar') openSheet(cvCarSheet(t.dataset.plate), null, 'convoy');
@@ -986,7 +1184,7 @@ document.addEventListener('click', e => {
 });
 function authError(err){
   const c = err && err.code || '';
-  if (c.includes('invalid-credential') || c.includes('wrong-password') || c.includes('user-not-found')) return 'Email or password is wrong. First time here? Create an account.';
+  if (c.includes('invalid-credential') || c.includes('wrong-password') || c.includes('user-not-found')) return 'ID number or password is wrong. Staff: the password is the numbers of your ID.';
   if (c.includes('email-already-in-use')) return 'This email already has an account. Sign in instead.';
   if (c.includes('weak-password')) return 'Use a password with at least 6 characters.';
   if (c.includes('invalid-email')) return 'That email address is not valid.';
@@ -1016,7 +1214,10 @@ document.addEventListener('submit', e => {
   e.preventDefault(); const f = e.target;
   if (f.id === 'fCv') cvSave();
   if (f.id === 'fCar') cvCarSave();
-  if (f.id === 'fAuth') { const em = loginEmail(val('aEmail')), pw = $('#aPass').value;
+  if (f.id === 'fReg') regSubmit();
+  if (f.id === 'fRegEdit') { const ms = new Date(val('regClose2')).getTime(); if (!ms) return;
+    db.collection('convoyInfo').doc('conv_' + S.cvDate).update({closesAt: ms}).then(() => { toast(ms > Date.now() ? 'Open until ' + fmtWhen(ms) : 'Registration closed'); closeSheet(); }).catch(failed); }
+  if (f.id === 'fAuth') { const em = loginEmail(val('aEmail')), pw = loginPass(val('aEmail'), $('#aPass').value);
     const p = S.authMode === 'signup'
       ? auth.createUserWithEmailAndPassword(em, pw).then(c => c.user.sendEmailVerification())
       : auth.signInWithEmailAndPassword(em, pw);
